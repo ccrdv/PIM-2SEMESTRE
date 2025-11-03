@@ -1,0 +1,37 @@
+{
+    "users": [
+        {
+            "username": "adm",
+            "password": "adm",
+            "nome_completo": "Administrador Padrão",
+            "documento": "123.456.789-00",
+            "data_nascimento": "01/01/1980",
+            "telefone": "(11) 99999-9999",
+            "endereco": "Rua Padrão, 123",
+            "sexo": "outro",
+            "role": "admin"
+        },
+        {
+            "username": "bragamp",
+            "password": "123",
+            "nome_completo": "braga mario penha",
+            "documento": "123.412.312-32",
+            "data_nascimento": "12/12/1212",
+            "telefone": "(12) 12121-2121",
+            "endereco": "braga mario penha",
+            "sexo": "m",
+            "role": "professor"
+        },
+        {
+            "username": "pat",
+            "password": "123",
+            "nome_completo": "patricia dos anjos rei",
+            "documento": "321.123.321-23",
+            "data_nascimento": "12/12/2001",
+            "telefone": "(18) 99764-4321",
+            "endereco": "rua rua numero numero bairro bairro",
+            "sexo": "f",
+            "role": "secretaria"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+	"atividades":	[{
+			"atividade_id":	1,
+			"descricao":	"Responda as questões sobre algoritmos",
+			"submissoes":	[{
+					"aluno_id":	1,
+					"arquivo":	"submissoes/1/1/resposta_20251025_1947.txt",
+					"data_envio":	"2025-10-25 19:47",
+					"status":	"enviado"
+				}, {
+					"aluno_id":	2,
+					"arquivo":	"submissoes/2/1/resposta_20251026_1812.txt",
+					"data_envio":	"2025-10-26 18:12",
+					"status":	"enviado"
+				}, {
+					"aluno_id":	3,
+					"arquivo":	"submissoes/3/1/resposta_20251028_1701.txt",
+					"data_envio":	"2025-10-28 17:01",
+					"status":	"enviado"
+				}]
+		}]
+}

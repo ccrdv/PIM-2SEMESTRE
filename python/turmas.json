@@ -1,0 +1,44 @@
+{
+    "turmas": [
+        {
+            "id": 1,
+            "nome_turma": "bio",
+            "professor": {
+                "nome": "braga mario penha",
+                "documento": "123.412.312-32",
+                "username": "bragamp"
+            },
+            "alunos": [
+                {
+                    "numero": 1,
+                    "matricula": "T5A3MO",
+                    "nome": "felipenes antonio freitas pinto",
+                    "documento": "321.123.123-23"
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "nome_turma": "dois",
+            "professor": {
+                "nome": "braga mario penha",
+                "documento": "123.412.312-32",
+                "username": "bragamp"
+            },
+            "alunos": [
+                {
+                    "numero": 1,
+                    "matricula": "T5A3MO",
+                    "nome": "felipenes antonio freitas pinto",
+                    "documento": "321.123.123-23"
+                },
+                {
+                    "numero": 2,
+                    "matricula": "MF1MIB",
+                    "nome": "antonio lherme da silva",
+                    "documento": "123.123.321-33"
+                }
+            ]
+        }
+    ]
+}
