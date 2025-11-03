@@ -1,0 +1,1 @@
+Aqui se encontram os arquivos .py e .JSON que servem de complemento para o PIM do 2 semestre, tenha em mente que os arquivos .py servem de módulos e são NECESSÁRIOS para o funcionamento do programa, também deve-se lembrar que o programa foi feito para utilizar uma pasta compartilhada em rede com python embedded + arquivos .py + banco de dados separados em arquivos .JSON
