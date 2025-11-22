@@ -1,75 +1,83 @@
 import sys
 import json
-import hashlib
 import os
 import time
 import shutil
 import getpass
+import datetime
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-# CORREÇÃO: Lógica simplificada para determinar BASE_DIR
+# Determina o diretório base (script ou executável) e define a pasta python_embedded
 if getattr(sys, 'frozen', False):
-    # Executável compilado - usar diretório do executável
     BASE_DIR = os.path.dirname(sys.executable)
 else:
-    # Script Python - usar diretório do script
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# VERIFICAÇÃO: Se já estamos em python_embedded, usar este diretório
 current_dir_name = os.path.basename(BASE_DIR)
 if current_dir_name == 'python_embedded':
-    # Já estamos na pasta python_embedded - usar como BASE_DIR
     PYTHON_EMBEDDED_DIR = BASE_DIR
 else:
-    # Estamos fora - apontar para python_embedded
     PYTHON_EMBEDDED_DIR = os.path.join(BASE_DIR, "python_embedded")
 
-# Garante que a pasta existe
 os.makedirs(PYTHON_EMBEDDED_DIR, exist_ok=True)
 
-# DEBUG: Verificar caminhos
-print(f"DEBUG: BASE_DIR = {BASE_DIR}")
-print(f"DEBUG: PYTHON_EMBEDDED_DIR = {PYTHON_EMBEDDED_DIR}")
-print(f"DEBUG: Current dir name = {current_dir_name}")
-
-# DEFINIR caminhos absolutos para os arquivos JSON
+# Caminhos absolutos para os arquivos JSON
 USER_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "users.json")
 ALUNOS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "alunos.json")
 MATRICULAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "matriculas.json")
+TURMAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "turmas.json")
+ATIVIDADES_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "atividades.json")
+PRESENCAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "presencas.json")
+NOTAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "notas.json")
 
+# Retorna a largura do terminal (ou 80 se não disponível)
 def checar_largura():
     try:
         return shutil.get_terminal_size().columns
     except (AttributeError, OSError):
         return 80
 
+# Imprime uma linha com o símbolo repetido até a largura do terminal
 def linha(simbolo='='):
     largura = checar_largura()
     print(simbolo * largura)
 
+# Limpa a tela do terminal
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
+# Pausa a execução pelo número de segundos informado
 def sleep(seconds=2):
     time.sleep(seconds)
 
-def carregar_professores():
+# Carrega um arquivo JSON, criando-o com uma chave padrão se não existir
+def carregar_json(file_path, default_key=None):
     try:
-        with open(USER_FILE, "r", encoding='utf-8') as f:  # Usar USER_FILE
+        with open(file_path, "r", encoding='utf-8') as f:
             data = json.load(f)
-            professores = []
-            for user in data.get("users", []):
-                if user.get("role") == "professor":
-                    professores.append(user)
-            return professores
+        if default_key and default_key not in data:
+            data[default_key] = []
+        return data
     except FileNotFoundError:
-        print(f"Erro: {USER_FILE} não encontrado.")
-        return []
+        default = {default_key: []} if default_key else {}
+        with open(file_path, "w", encoding='utf-8') as f:
+            json.dump(default, f, indent=4, ensure_ascii=False)
+        return default
     except json.JSONDecodeError:
-        print(f"Erro: {USER_FILE} corrompido.")
-        return []
-    
+        return {default_key: []} if default_key else {}
+
+# Salva dados em formato JSON no caminho informado
+def salvar_json(file_path, data):
+    with open(file_path, "w", encoding='utf-8') as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
+
+# Retorna a lista de usuários com papel 'professor'
+def carregar_professores():
+    data = carregar_json(USER_FILE, "users")
+    return [user for user in data.get("users", []) if user.get("role") == "professor"]
+
+# Exibe a lista de professores cadastrados
 def listar_professores():
     professores = carregar_professores()
     
@@ -91,6 +99,145 @@ def listar_professores():
     linha()
     input("Pressione Enter para continuar...")
 
+# Retorna as turmas associadas a um professor pelo nome de usuário
+def get_turmas_professor(username):
+    data = carregar_json(TURMAS_FILE, "turmas")
+    return [turma for turma in data["turmas"] if turma.get("professor", {}).get("username") == username]
+
+# Registra presença dos alunos de uma turma para o professor informado
+def registrar_presenca(professor_username):
+    turmas = get_turmas_professor(professor_username)
+    if not turmas:
+        print("\033[31mNenhuma turma assignada a você.\033[m")
+        sleep()
+        return
+
+    clear()
+    linha()
+    print("=== Registrar Presença ===")
+    linha()
+    for i, turma in enumerate(turmas, 1):
+        print(f"{i}. {turma['nome_turma']} (ID: {turma['id']})")
+    linha()
+    escolha = input("Selecione a turma (número) ou Enter para cancelar: ").strip()
+    if not escolha:
+        return
+    try:
+        index = int(escolha) - 1
+        turma = turmas[index]
+    except:
+        print("\033[31mSeleção inválida.\033[m")
+        sleep()
+        return
+
+    alunos = turma.get("alunos", [])
+    if not alunos:
+        print("\033[31mNenhuma aluno na turma.\033[m")
+        sleep()
+        return
+
+    data_hoje = datetime.date.today().isoformat()
+    presencas_data = carregar_json(PRESENCAS_FILE, "presencas")
+
+    print(f"Registrando presença para {turma['nome_turma']} em {data_hoje}")
+    linha()
+    presenca_lista = []
+    for aluno in alunos:
+        resp = input(f"{aluno['nome']} ({aluno['matricula']}): P (presente) / A (ausente): ").strip().upper()
+        presente = resp == 'P'
+        presenca_lista.append({"matricula": aluno['matricula'], "presente": presente})
+
+    presencas_data["presencas"].append({
+        "data": data_hoje,
+        "turma_id": turma['id'],
+        "presencas": presenca_lista
+    })
+    salvar_json(PRESENCAS_FILE, presencas_data)
+    print("\033[32mPresença registrada!\033[m")
+    sleep()
+
+# Permite ao professor atribuir notas para atividades de uma turma
+def atribuir_notas(professor_username):
+    turmas = get_turmas_professor(professor_username)
+    if not turmas:
+        print("\033[31mNenhuma turma assignada a você.\033[m")
+        sleep()
+        return
+
+    clear()
+    linha()
+    print("=== Atribuir Notas ===")
+    linha()
+    for i, turma in enumerate(turmas, 1):
+        print(f"{i}. {turma['nome_turma']} (ID: {turma['id']})")
+    linha()
+    escolha = input("Selecione a turma (número) ou Enter para cancelar: ").strip()
+    if not escolha:
+        return
+    try:
+        index = int(escolha) - 1
+        turma = turmas[index]
+    except:
+        print("\033[31mSeleção inválida.\033[m")
+        sleep()
+        return
+
+    atividades_data = carregar_json(ATIVIDADES_FILE, "atividades")
+    atividades = [atv for atv in atividades_data["atividades"] if atv.get("turma_id") == turma['id']]
+    if not atividades:
+        print("\033[31mNenhuma atividade na turma.\033[m")
+        sleep()
+        return
+
+    for i, atv in enumerate(atividades, 1):
+        print(f"{i}. {atv['descricao']} (ID: {atv['id']})")
+    linha()
+    escolha_atv = input("Selecione a atividade (número) ou Enter para cancelar: ").strip()
+    if not escolha_atv:
+        return
+    try:
+        index_atv = int(escolha_atv) - 1
+        atividade = atividades[index_atv]
+    except:
+        print("\033[31mSeleção inválida.\033[m")
+        sleep()
+        return
+
+    alunos = turma.get("alunos", [])
+    if not alunos:
+        print("\033[31mNenhuma aluno na turma.\033[m")
+        sleep()
+        return
+
+    notas_data = carregar_json(NOTAS_FILE, "notas")
+
+    print(f"Atribuindo notas para {atividade['descricao']} em {turma['nome_turma']}")
+    linha()
+    for aluno in alunos:
+        while True:
+            nota_str = input(f"{aluno['nome']} ({aluno['matricula']}): Nota (0-10) ou Enter para pular: ").strip()
+            if not nota_str:
+                break
+            try:
+                nota = float(nota_str)
+                if 0 <= nota <= 10:
+                    notas_data["notas"].append({
+                        "turma_id": turma['id'],
+                        "atividade_id": atividade['id'],
+                        "matricula": aluno['matricula'],
+                        "nota": nota
+                    })
+                    break
+                else:
+                    print("\033[31mNota deve ser entre 0 e 10.\033[m")
+            except ValueError:
+                print("\033[31mEntrada inválida.\033[m")
+
+    salvar_json(NOTAS_FILE, notas_data)
+    print("\033[32mNotas atribuídas!\033[m")
+    sleep()
+
+# Autentica professor e retorna o nome completo em caso de sucesso
 def login_professor():
     clear()
     linha()
@@ -123,8 +270,6 @@ def login_professor():
         print(f"Bem-vindo, {professor.get('nome_completo', 'Professor').title()}!") 
         linha()
         sleep()
-        
-        # Retorna o nome do professor sem exibir no console
         return professor.get('nome_completo', 'Professor')
     else:
         linha()
@@ -133,7 +278,7 @@ def login_professor():
         sleep()
         return None
 
-# Bloco para testes independentes
+# Execução de teste quando o arquivo é executado diretamente
 if __name__ == "__main__":
     print("Teste do LoginProfessor")
     resultado = login_professor()

@@ -4,33 +4,24 @@ import os
 import time
 import shutil
 
-
 sys.stdout.reconfigure(encoding='utf-8')
 
-# CORREÇÃO: Lógica simplificada para determinar BASE_DIR
 if getattr(sys, 'frozen', False):
-    # Executável compilado - usar diretório do executável
     BASE_DIR = os.path.dirname(sys.executable)
 else:
-    # Script Python - usar diretório do script
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# VERIFICAÇÃO: Se já estamos em python_embedded, usar este diretório
 current_dir_name = os.path.basename(BASE_DIR)
 if current_dir_name == 'python_embedded':
-    # Já estamos na pasta python_embedded - usar como BASE_DIR
     PYTHON_EMBEDDED_DIR = BASE_DIR
 else:
-    # Estamos fora - apontar para python_embedded
     PYTHON_EMBEDDED_DIR = os.path.join(BASE_DIR, "python_embedded")
 
-# Garante que a pasta existe
 os.makedirs(PYTHON_EMBEDDED_DIR, exist_ok=True)
 
-# DEFINIR caminhos absolutos para os arquivos JSON
 USER_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "users.json")
 TURMAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "turmas.json")
-ALUNOS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "alunos.json")
+ALUNOS_FILE = os.path.join(PYTHON_EMBEDDIR, "alunos.json") if False else os.path.join(PYTHON_EMBEDDED_DIR, "alunos.json")
 MATRICULAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "matriculas.json")
 ATIVIDADES_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "atividades.json")
 ANUNCIOS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "anuncios.json")
@@ -45,39 +36,45 @@ except ImportError as e:
     print(f"Conteúdo do diretório: {os.listdir(PYTHON_EMBEDDED_DIR) if os.path.exists(PYTHON_EMBEDDED_DIR) else 'Diretório não existe'}")
     cadastrosecretaria = None
 
+# Função: checar_largura — retorna a largura do terminal ou 80 como fallback
 def checar_largura():
     try:
         return shutil.get_terminal_size().columns
     except (AttributeError, OSError):
         return 80
 
+# Função: linha — imprime uma linha horizontal usando o símbolo especificado
 def linha(simbolo='='):
     largura = checar_largura()
     print(simbolo * largura)
 
+# Função: clear — limpa a tela do terminal conforme o sistema operacional
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
-# Funções de formatação
+# Função: formatar_cpf — formata CPF de 11 dígitos como XXX.XXX.XXX-XX
 def formatar_cpf(cpf):
     if len(cpf) == 11 and cpf.isdigit():
         return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
     return cpf
 
+# Função: desformatar_cpf — remove caracteres não numéricos de um CPF
 def desformatar_cpf(cpf):
     return ''.join(filter(str.isdigit, cpf))
 
+# Função: formatar_data_nascimento — formata data DDMMAAAA para DD/MM/AAAA
 def formatar_data_nascimento(data):
     if len(data) == 8 and data.isdigit():
         return f"{data[:2]}/{data[2:4]}/{data[4:]}"
     return data
 
+# Função: formatar_telefone — formata telefone de 11 dígitos como (XX) XXXXX-XXXX
 def formatar_telefone(telefone):
     if len(telefone) == 11 and telefone.isdigit():
         return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"
     return telefone
 
-# Inicializa o arquivo de usuários com um administrador padrão
+# Função: init_users — inicializa arquivo de usuários com administrador padrão se ausente
 def init_users():
     default_users = {
         "users": [
@@ -103,7 +100,7 @@ def init_users():
         time.sleep(2)
         clear()
 
-# Carrega usuários do arquivo JSON
+# Função: load_users — carrega usuários do arquivo JSON, inicializa se necessário
 def load_users():
     try:
         with open(USER_FILE, 'r', encoding='utf-8') as f:
@@ -112,7 +109,7 @@ def load_users():
         init_users()
         return load_users()
 
-# Função para carregar alunos (do módulo cadastrosecretaria)
+# Função: load_alunos — carrega e normaliza dados de alunos de diversos formatos possíveis
 def load_alunos():
     """Carrega alunos do arquivo alunos.json e converte para a estrutura esperada.
 
@@ -130,7 +127,6 @@ def load_alunos():
         users_data = load_users()
         alunos_lista = []
 
-        # Caso: objeto com chave 'alunos' contendo uma lista
         if isinstance(data, dict) and 'alunos' in data and isinstance(data['alunos'], list):
             raw_list = data['alunos']
             for item in raw_list:
@@ -145,7 +141,6 @@ def load_alunos():
                 nome = item.get('nome') or item.get('nome_completo')
                 documento = item.get('documento')
 
-                # try to enrich with users.json when username available (case-insensitive)
                 if username:
                     aluno_info = next((u for u in users_data['users'] if str(u.get('username','')).lower() == username), None)
                     if aluno_info:
@@ -159,14 +154,11 @@ def load_alunos():
                     'documento': documento
                 })
 
-        # Caso: dicionário mapeando username -> dados
         elif isinstance(data, dict):
             for username, dados in data.items():
-                # somente considerar chaves que pareçam usernames (string)
                 if not isinstance(username, str):
                     continue
                 uname = username.lower()
-                # procurar usuário em users.json de forma case-insensitive
                 aluno_info = next((u for u in users_data['users'] if str(u.get('username','')).lower() == uname), None)
                 matricula = None
                 if isinstance(dados, dict):
@@ -181,7 +173,6 @@ def load_alunos():
                         'documento': aluno_info.get('documento')
                     })
 
-        # Caso: lista direta
         elif isinstance(data, list):
             for item in data:
                 if not isinstance(item, dict):
@@ -215,7 +206,7 @@ def load_alunos():
         print(f"\033[31mErro ao carregar alunos: {e}\033[m")
         return {'alunos': []}
 
-
+# Função: load_matriculas — carrega e normaliza dados de matrículas de vários formatos
 def load_matriculas():
     """Carrega alunos a partir de matriculas.json e retorna no formato {'alunos': [...]}
 
@@ -228,7 +219,6 @@ def load_matriculas():
 
         alunos_lista = []
 
-        # Se for dicionário com chave 'matriculas' ou 'alunos'
         if isinstance(data, dict) and 'matriculas' in data and isinstance(data['matriculas'], list):
             raw_list = data['matriculas']
         elif isinstance(data, dict) and 'alunos' in data and isinstance(data['alunos'], list):
@@ -236,14 +226,11 @@ def load_matriculas():
         elif isinstance(data, list):
             raw_list = data
         elif isinstance(data, dict):
-            # Possível mapeamento matricula -> dados
             raw_list = []
             for key, dados in data.items():
                 if isinstance(dados, dict):
                     entry = dados.copy()
-                    # A chave do dicionário normalmente é a matrícula — garanta que fique no campo 'matricula' (padronizada em maiúsculas)
                     entry.setdefault('matricula', str(key).upper())
-                    # Se não houver username explícito, use a chave como username também (compatibilidade) e normalize para lower()
                     entry.setdefault('username', str(key).lower())
                     raw_list.append(entry)
         else:
@@ -273,7 +260,7 @@ def load_matriculas():
         print(f"\033[31mErro ao carregar matriculas: {e}\033[m")
         return {'alunos': []}
 
-# Função para carregar professores
+# Função: load_professores — retorna lista de usuários com role 'professor'
 def load_professores():
     """Carrega todos os usuários com role 'professor'"""
     users_data = load_users()
@@ -283,12 +270,12 @@ def load_professores():
             professores.append(user)
     return professores
 
-# Salva usuários no arquivo JSON
+# Função: save_users — persiste objeto de usuários no arquivo JSON
 def save_users(users):
     with open(USER_FILE, 'w', encoding='utf-8') as f:
         json.dump(users, f, indent=4, ensure_ascii=False)
 
-# Função de cadastro
+# Função: register — interface de cadastro de novo usuário
 def register():
     clear()
     linha()
@@ -348,7 +335,6 @@ def register():
     sexo = input("Digite o sexo (M/F/Outro): ").lower().strip()
     linha()
     
-    # Validações
     if not all([username, password, nome_completo, cpf, data_nascimento, telefone, endereco, sexo]):
         print("\033[31mTodos os campos são obrigatórios!\033[m")
         linha()
@@ -386,7 +372,6 @@ def register():
     
     users_data = load_users()
     
-    # Verifica se o nome de usuário ou CPF já existe (comparação case-insensitive para username)
     for user in users_data["users"]:
         if str(user.get("username", "")).lower() == username:
             print("\033[31mNome de usuário já existe!\033[m")
@@ -401,12 +386,10 @@ def register():
             clear()
             return False
     
-    # Formata os dados
     cpf_formatado = formatar_cpf(cpf)
     data_nascimento_formatada = formatar_data_nascimento(data_nascimento)
     telefone_formatado = formatar_telefone(telefone)
     
-    # Adiciona novo usuário
     users_data["users"].append({
         "username": username,
         "password": password,
@@ -425,9 +408,8 @@ def register():
     clear()
     return True
 
-# Função de login
+# Função: login — autentica usuário e retorna (sucesso, role)
 def login(username, password):
-    # normalize username for case-insensitive comparison
     username = username.strip().lower()
     users_data = load_users()
     
@@ -455,7 +437,7 @@ def login(username, password):
     clear()
     return False, None
 
-# Função para remover usuário por documento
+# Função: remover_usuario_por_documento — remove usuário pelo CPF formatado ou não
 def remover_usuario_por_documento(documento):
     documento_desformatado = desformatar_cpf(documento)
     users_data = load_users()
@@ -477,7 +459,7 @@ def remover_usuario_por_documento(documento):
     clear()
     return False
 
-# Função para remover usuário (interface)
+# Função: remover_usuario — interface para entrada de CPF e remoção de usuário
 def remover_usuario():
     clear()
     linha()
@@ -486,7 +468,7 @@ def remover_usuario():
     linha()
     return remover_usuario_por_documento(documento)
 
-# Função de interface para administrador
+# Função: menu_admin — interface interativa para operações de administrador
 def menu_admin():
     while True:
         clear()
@@ -512,7 +494,8 @@ def menu_admin():
             gerenciar_turmas()
         elif choice == "5":
             clear()
-            cadastrosecretaria.menu_principal()
+            if cadastrosecretaria:
+                cadastrosecretaria.menu_principal()
         elif choice == "6":
             linha()
             print("\033[31mSaindo...\033[m")
@@ -527,6 +510,7 @@ def menu_admin():
             time.sleep(2)
             clear()
 
+# Função: listar_turmas — imprime todas as turmas cadastradas de forma legível
 def listar_turmas():
     """Lista todas as turmas de forma formatada"""
     turmas_data = load_turmas()
@@ -545,6 +529,7 @@ def listar_turmas():
             print(f"  {aluno['numero']}. {nome}")
     return True
 
+# Função: selecionar_turma_interativo — permite ao usuário selecionar uma turma via input
 def selecionar_turma_interativo():
     """Permite selecionar uma turma de forma interativa"""
     turmas_data = load_turmas()
@@ -570,6 +555,7 @@ def selecionar_turma_interativo():
         print("\033[31mDigite um número válido!\033[m")
         return None
 
+# Função: editar_turma — menu de edição para modificar dados de uma turma específica
 def editar_turma(turma, turma_index):
     """Menu de edição para uma turma específica"""
     while True:
@@ -592,7 +578,6 @@ def editar_turma(turma, turma_index):
         if opcao == "1":
             novo_nome = input("Novo nome da turma: ").strip()
             if novo_nome:
-                # Verificar se o nome já existe
                 turmas_data = load_turmas()
                 nome_existe = any(t['nome_turma'].lower() == novo_nome.lower() 
                                 for i, t in enumerate(turmas_data["turmas"]) 
@@ -646,7 +631,6 @@ def editar_turma(turma, turma_index):
                 time.sleep(2)
                 
         elif opcao == "3":
-            # Adicionar aluno
             alunos_data = load_matriculas()
             alunos_na_turma = [a['matricula'] for a in turma['alunos']]
             alunos_disponiveis = [a for a in alunos_data["alunos"] 
@@ -689,7 +673,6 @@ def editar_turma(turma, turma_index):
                 time.sleep(2)
                 
         elif opcao == "4":
-            # Remover aluno
             if not turma['alunos']:
                 print("\033[33mNão há alunos para remover!\033[m")
                 time.sleep(2)
@@ -708,7 +691,6 @@ def editar_turma(turma, turma_index):
                 aluno_para_remover = next((a for a in turma['alunos'] if a['numero'] == numero_aluno), None)
                 if aluno_para_remover:
                     turma['alunos'] = [a for a in turma['alunos'] if a['numero'] != numero_aluno]
-                    # Renumerar os alunos restantes
                     for i, aluno in enumerate(turma['alunos'], 1):
                         aluno['numero'] = i
                     
@@ -725,7 +707,6 @@ def editar_turma(turma, turma_index):
                 time.sleep(2)
                 
         elif opcao == "5":
-            # Listar alunos
             clear()
             linha()
             print(f"\033[1m=== Alunos da Turma: {turma['nome_turma']} ===\033[m")
@@ -744,6 +725,7 @@ def editar_turma(turma, turma_index):
             print("\033[31mOpção inválida!\033[m")
             time.sleep(2)
 
+# Função: remover_turma — confirma e remove turma selecionada
 def remover_turma():
     """Remove uma turma completamente"""
     resultado = selecionar_turma_interativo()
@@ -773,11 +755,13 @@ def remover_turma():
         time.sleep(2)
         return False
 
+# Função: init_turmas — inicializa arquivo de turmas vazio se ausente
 def init_turmas():
     if not os.path.exists(TURMAS_FILE):
         with open(TURMAS_FILE, 'w', encoding='utf-8') as f:
             json.dump({"turmas": []}, f, indent=4, ensure_ascii=False)
 
+# Função: load_turmas — carrega turmas do arquivo JSON, inicializa se necessário
 def load_turmas():
     try:
         with open(TURMAS_FILE, 'r', encoding='utf-8') as f:
@@ -786,18 +770,18 @@ def load_turmas():
         init_turmas()
         return load_turmas()
 
+# Função: save_turmas — salva dados de turmas no arquivo JSON
 def save_turmas(turmas_data):
     with open(TURMAS_FILE, 'w', encoding='utf-8') as f:
         json.dump(turmas_data, f, indent=4, ensure_ascii=False)
 
-# Função principal para criar turma
+# Função: criar_turma — cria uma nova turma interativamente e salva em disco
 def criar_turma():
     init_turmas()
     clear()
     linha()
     print("\033[1m=== Criar Nova Turma ===\033[m")
     
-    # Nome da turma
     nome_turma = input("Digite o nome da turma: ").strip()
     if not nome_turma:
         print("\033[31mNome da turma é obrigatório!\033[m")
@@ -805,7 +789,6 @@ def criar_turma():
         time.sleep(2)
         return False
     
-    # Verificar se turma já existe
     turmas_data = load_turmas()
     for turma in turmas_data["turmas"]:
         if turma["nome_turma"].lower() == nome_turma.lower():
@@ -814,7 +797,6 @@ def criar_turma():
             time.sleep(2)
             return False
     
-    # Selecionar professor
     professores = load_professores()
     if not professores:
         print("\033[31mNenhum professor cadastrado no sistema!\033[m")
@@ -848,7 +830,6 @@ def criar_turma():
         time.sleep(2)
         return False
     
-    # Selecionar alunos
     alunos_data = load_matriculas()
     if not alunos_data["alunos"]:
         print("\033[31mNenhum aluno cadastrado no sistema!\033[m")
@@ -907,7 +888,6 @@ def criar_turma():
         time.sleep(2)
         return False
     
-    # Criar a estrutura da turma
     nova_turma = {
         "id": len(turmas_data["turmas"]) + 1,
         "nome_turma": nome_turma,
@@ -919,7 +899,6 @@ def criar_turma():
         "alunos": []
     }
     
-    # Adicionar alunos numerados
     for i, aluno in enumerate(alunos_selecionados, 1):
         nova_turma["alunos"].append({
             "numero": i,
@@ -928,11 +907,9 @@ def criar_turma():
             "documento": aluno["documento"]
         })
     
-    # Salvar a turma
     turmas_data["turmas"].append(nova_turma)
     save_turmas(turmas_data)
     
-    # Mostrar resumo
     clear()
     linha()
     print("\033[1m=== Turma Criada com Sucesso! ===\033[m")
@@ -950,6 +927,7 @@ def criar_turma():
     time.sleep(3)
     return True
 
+# Função: gerenciar_turmas — menu principal para listar, editar e remover turmas
 def gerenciar_turmas():
     """Função principal de gerenciamento de turmas"""
     init_turmas()
@@ -988,7 +966,7 @@ def gerenciar_turmas():
             print("\033[31mOpção inválida!\033[m")
             time.sleep(2)
 
-# Menu principal
+# Função: main — loop principal do programa com login e encaminhamento para menus
 def main():
     init_users()
     
@@ -1014,7 +992,8 @@ def main():
                     menu_admin()
                 elif role == "secretaria":
                     clear()
-                    cadastrosecretaria.menu_principal()
+                    if cadastrosecretaria:
+                        cadastrosecretaria.menu_principal()
         elif choice == "2":
             linha()
             print("\033[31mAté logo!\033[m")

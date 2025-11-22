@@ -16,9 +16,9 @@
             "password": "123",
             "nome_completo": "braga mario penha",
             "documento": "123.412.312-32",
-            "data_nascimento": "12/12/1212",
+            "data_nascimento": "12/12/1975",
             "telefone": "(12) 12121-2121",
-            "endereco": "braga mario penha",
+            "endereco": "rua dos professores 100",
             "sexo": "m",
             "role": "professor"
         },
@@ -27,11 +27,22 @@
             "password": "123",
             "nome_completo": "patricia dos anjos rei",
             "documento": "321.123.321-23",
-            "data_nascimento": "12/12/2001",
+            "data_nascimento": "12/12/1985",
             "telefone": "(18) 99764-4321",
-            "endereco": "rua rua numero numero bairro bairro",
+            "endereco": "rua secretaria 50",
             "sexo": "f",
             "role": "secretaria"
+        },
+        {
+            "username": "profcarla",
+            "password": "prof123",
+            "nome_completo": "carla mendes silva",
+            "documento": "555.666.777-88",
+            "data_nascimento": "20/03/1980",
+            "telefone": "(19) 98877-6655",
+            "endereco": "av central 300",
+            "sexo": "f",
+            "role": "professor"
         }
     ]
 }

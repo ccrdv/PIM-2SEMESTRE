@@ -14,5 +14,21 @@
         "telefone": "(18) 99874-2345",
         "endereco": "avenida das flores 2",
         "sexo": "m"
+    },
+    "X7K9PQ": {
+        "nome": "maria clara oliveira",
+        "data_nascimento": "15/08/2001",
+        "documento": "456.789.123-45",
+        "telefone": "(11) 98765-4321",
+        "endereco": "rua das acacias 45",
+        "sexo": "f"
+    },
+    "B2N4RT": {
+        "nome": "joão pedro santos",
+        "data_nascimento": "03/05/2000",
+        "documento": "987.654.321-09",
+        "telefone": "(21) 97654-3210",
+        "endereco": "praça da liberdade 100",
+        "sexo": "m"
     }
 }

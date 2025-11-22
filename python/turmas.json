@@ -37,6 +37,35 @@
                     "matricula": "MF1MIB",
                     "nome": "antonio lherme da silva",
                     "documento": "123.123.321-33"
+                },
+                {
+                    "numero": 3,
+                    "matricula": "X7K9PQ",
+                    "nome": "maria clara oliveira",
+                    "documento": "456.789.123-45"
+                }
+            ]
+        },
+        {
+            "id": 3,
+            "nome_turma": "terceira",
+            "professor": {
+                "nome": "patricia dos anjos rei",
+                "documento": "321.123.321-23",
+                "username": "pat"
+            },
+            "alunos": [
+                {
+                    "numero": 1,
+                    "matricula": "X7K9PQ",
+                    "nome": "maria clara oliveira",
+                    "documento": "456.789.123-45"
+                },
+                {
+                    "numero": 2,
+                    "matricula": "B2N4RT",
+                    "nome": "joão pedro santos",
+                    "documento": "987.654.321-09"
                 }
             ]
         }

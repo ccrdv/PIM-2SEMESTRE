@@ -8,75 +8,82 @@ import getpass
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-# CORREÇÃO: Lógica simplificada para determinar BASE_DIR
+# Determina o diretório base do script ou do executável
 if getattr(sys, 'frozen', False):
-    # Executável compilado - usar diretório do executável
     BASE_DIR = os.path.dirname(sys.executable)
 else:
-    # Script Python - usar diretório do script
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# VERIFICAÇÃO: Se já estamos em python_embedded, usar este diretório
+# Define o diretório python_embedded (usa BASE_DIR se já estiver dentro)
 current_dir_name = os.path.basename(BASE_DIR)
 if current_dir_name == 'python_embedded':
-    # Já estamos na pasta python_embedded - usar como BASE_DIR
     PYTHON_EMBEDDED_DIR = BASE_DIR
 else:
-    # Estamos fora - apontar para python_embedded
     PYTHON_EMBEDDED_DIR = os.path.join(BASE_DIR, "python_embedded")
 
-# Garante que a pasta existe
+# Garante que a pasta python_embedded exista
 os.makedirs(PYTHON_EMBEDDED_DIR, exist_ok=True)
 
-# DEBUG: Verificar caminhos
-print(f"DEBUG: BASE_DIR = {BASE_DIR}")
-print(f"DEBUG: PYTHON_EMBEDDED_DIR = {PYTHON_EMBEDDED_DIR}")
-print(f"DEBUG: Current dir name = {current_dir_name}")
-
-# DEFINIR caminhos absolutos para os arquivos JSON
+# Caminhos absolutos para os arquivos JSON usados pelo programa
 USER_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "users.json")
 ALUNOS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "alunos.json")
 MATRICULAS_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "matriculas.json")
 
+# Retorna a largura do terminal ou 80 como fallback.
 def checar_largura():
+    """Retorna a largura do terminal ou 80 como fallback."""
     try:
         return shutil.get_terminal_size().columns
     except (AttributeError, OSError):
         return 80
 
+# Imprime uma linha horizontal usando o símbolo informado conforme a largura do terminal.
 def linha(simbolo='='):
+    """Imprime uma linha horizontal usando o símbolo informado conforme a largura do terminal."""
     largura = checar_largura()
     print(simbolo * largura)
 
+# Limpa a tela do terminal (compatível Windows/Linux).
 def clear():
+    """Limpa a tela do terminal (compatível Windows/Linux)."""
     os.system("cls" if os.name == "nt" else "clear")
 
+# Pausa a execução por um número de segundos (padrão 2).
 def sleep(seconds=2):
+    """Pausa a execução por um número de segundos (padrão 2)."""
     time.sleep(seconds)
 
+# Carrega o arquivo alunos.json; cria um arquivo vazio se não existir e retorna o dicionário.
 def carregar_alunos():
+    """Carrega o arquivo alunos.json; cria um arquivo vazio se não existir e retorna o dicionário."""
     try:
-        with open(ALUNOS_FILE, "r", encoding='utf-8') as f:  # Usar ALUNOS_FILE
+        with open(ALUNOS_FILE, "r", encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        with open(ALUNOS_FILE, "w", encoding='utf-8') as f:  # Criar em python_embedded
+        with open(ALUNOS_FILE, "w", encoding='utf-8') as f:
             json.dump({}, f, indent=4, ensure_ascii=False)
         return {}
 
+# Carrega o arquivo matriculas.json; cria um arquivo vazio se não existir e retorna o dicionário.
 def carregar_matricula():
+    """Carrega o arquivo matriculas.json; cria um arquivo vazio se não existir e retorna o dicionário."""
     try:
-        with open(MATRICULAS_FILE, "r", encoding='utf-8') as f:  # Usar MATRICULAS_FILE
+        with open(MATRICULAS_FILE, "r", encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
-        with open(MATRICULAS_FILE, "w", encoding='utf-8') as f:  # Criar em python_embedded
+        with open(MATRICULAS_FILE, "w", encoding='utf-8') as f:
             json.dump({}, f, indent=4, ensure_ascii=False)
         return {}
 
+# Salva o dicionário de alunos no arquivo alunos.json.
 def salvar_alunos(alunos):
-    with open(ALUNOS_FILE, "w", encoding='utf-8') as f:  # Sempre salvar em python_embedded
+    """Salva o dicionário de alunos no arquivo alunos.json."""
+    with open(ALUNOS_FILE, "w", encoding='utf-8') as f:
         json.dump(alunos, f, indent=4, ensure_ascii=False)
 
+# Realiza o fluxo de registro de um aluno: valida matrícula, cria usuário e salva senha hash.
 def registrar():
+    """Realiza o fluxo de registro de um aluno: valida matrícula, cria usuário e salva senha hash."""
     clear()
     linha()
     print("=== Registro de Aluno ===")
@@ -143,7 +150,9 @@ def registrar():
         sleep()
         return False
 
+# Realiza o fluxo de login: verifica usuário e valida senha (retorna matrícula se bem-sucedido).
 def login_aluno():
+    """Realiza o fluxo de login: verifica usuário e valida senha (retorna matrícula se bem-sucedido)."""
     clear()
     linha()
     print("=== Login de Aluno ===")
@@ -178,5 +187,3 @@ def login_aluno():
         linha()
         sleep()
         return False
-    
-

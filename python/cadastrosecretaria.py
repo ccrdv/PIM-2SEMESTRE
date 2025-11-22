@@ -7,65 +7,70 @@ import random
 
 sys.stdout.reconfigure(encoding='utf-8')
 
-# CORREÇÃO: Lógica simplificada para determinar BASE_DIR
+# Determina o diretório base: se estiver empacotado (frozen) usa o diretório do executável,
+# caso contrário usa o diretório do script atual.
 if getattr(sys, 'frozen', False):
-    # Executável compilado - usar diretório do executável
     BASE_DIR = os.path.dirname(sys.executable)
 else:
-    # Script Python - usar diretório do script
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# VERIFICAÇÃO: Se já estamos em python_embedded, usar este diretório
+# Define PYTHON_EMBEDDED_DIR apontando para a pasta 'python_embedded' se já estivermos nela,
+# caso contrário cria o caminho relativo dentro do BASE_DIR.
 current_dir_name = os.path.basename(BASE_DIR)
 if current_dir_name == 'python_embedded':
-    # Já estamos na pasta python_embedded - usar como BASE_DIR
     PYTHON_EMBEDDED_DIR = BASE_DIR
 else:
-    # Estamos fora - apontar para python_embedded
     PYTHON_EMBEDDED_DIR = os.path.join(BASE_DIR, "python_embedded")
 
-# Garante que a pasta existe
+# Garante que a pasta python_embedded exista
 os.makedirs(PYTHON_EMBEDDED_DIR, exist_ok=True)
 
-# DEFINIR caminhos absolutos para os arquivos JSON
+# Caminho absoluto do arquivo JSON que armazena as matrículas
 MATRICULA_FILE = os.path.join(PYTHON_EMBEDDED_DIR, "matriculas.json")
 
-# Funções de formatação
+# Formata um CPF no padrão ###.###.###-## se tiver 11 dígitos; caso contrário retorna o valor original.
 def formatar_cpf(cpf):
     if len(cpf) == 11 and cpf.isdigit():
         return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
     return cpf
 
+# Remove todos os caracteres não numéricos (usado para comparar CPFs)
 def desformatar_cpf(cpf):
     return ''.join(filter(str.isdigit, cpf))
 
+# Formata data DDMMAAAA para DD/MM/AAAA se tiver 8 dígitos; caso contrário retorna o valor original.
 def formatar_data_nascimento(data):
     if len(data) == 8 and data.isdigit():
         return f"{data[:2]}/{data[2:4]}/{data[4:]}"
     return data
 
+# Formata telefone brasileiro com 11 dígitos para (XX) XXXXX-XXXX; caso contrário retorna o valor original.
 def formatar_telefone(telefone):
     if len(telefone) == 11 and telefone.isdigit():
         return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"
     return telefone
 
-# Funções de interface
+# Retorna a largura atual do terminal; se não for possível, usa 80 como padrão.
 def checar_largura():
     try:
         return shutil.get_terminal_size().columns
     except (AttributeError, OSError):
         return 80
 
+# Imprime uma linha horizontal usando o símbolo fornecido repetido pela largura do terminal.
 def linha(simbolo='='):
     largura = checar_largura()
     print(simbolo * largura)
 
+# Limpa a tela conforme o sistema operacional.
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
+# Pausa a execução por 2 segundos.
 def sleep():
     time.sleep(2)
 
+# Limpa a tela, mostra mensagem de saída e encerra o programa.
 def sair():
     clear()
     linha()
@@ -73,7 +78,7 @@ def sair():
     linha()
     sys.exit()
 
-# Funções de matrícula
+# Carrega o dicionário de matrículas do arquivo JSON; cria o arquivo vazio se não existir.
 def carregar_matricula():
     try:
         with open(MATRICULA_FILE, "r", encoding='utf-8') as f:
@@ -83,6 +88,7 @@ def carregar_matricula():
             json.dump({}, f, ensure_ascii=False)
         return {}
 
+# Interage com o usuário para criar uma nova matrícula, valida entradas, garante CPF único e salva no JSON.
 def criar_matricula():
     linha()
     print("=== Criar Matrícula ===")
@@ -156,6 +162,7 @@ def criar_matricula():
     clear()
     return True, matriculaaluno
 
+# Busca um aluno por nome ou CPF, permite editar os campos com validação e salva as alterações no JSON.
 def editar_matricula():
     linha()
     print("=== Editar Matrícula ===")
@@ -267,6 +274,7 @@ def editar_matricula():
     clear()
     return True
 
+# Busca e exibe dados do aluno pela matrícula fornecida; retorna (sucesso, dados).
 def buscar_aluno_por_matricula():
     matricula = carregar_matricula()
     linha()
@@ -292,6 +300,7 @@ def buscar_aluno_por_matricula():
         clear()
         return False, None
 
+# Busca e exibe dados do aluno pelo CPF; retorna (sucesso, dados, matrícula).
 def buscar_aluno_por_documento():
     matricula = carregar_matricula()
     linha()
@@ -319,6 +328,7 @@ def buscar_aluno_por_documento():
     clear()
     return False, None, None
 
+# Mostra o menu principal e direciona para as operações correspondentes.
 def menu_principal():
     while True:
         linha()
