@@ -4,226 +4,144 @@
 #include <windows.h>
 #undef MOUSE_MOVED
 #include <Python.h>
-#include <direct.h>
+#include <curses.h>
 #include "MenuAdm.h"
 #include "MenuSec.h"
 
 #define MAX_INPUT 256
+#define PYTHON_EMBEDDED_ROOT L"Z:\\python_embedded"
 
-// === PROTÓTIPOS ===
-void menuPrincipal();
-void limparTela();
-void linha();
-void garantir_arquivos_json();
-int rodarPythonLogin();
-wchar_t* get_exe_dir();
-wchar_t* wcs_concat(const wchar_t* a, const wchar_t* b);
-int init_python_portable();
-void force_python_path();
-
-// === FUNÇÃO: Imprime UTF-8 no PDCurses ===
-void printw_utf8(const char* str) {
-    int wide_len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
-    if (wide_len <= 0) { printw("%s", str); return; }
-
-    wchar_t* wide_str = (wchar_t*)malloc(wide_len * sizeof(wchar_t));
-    if (!wide_str) { printw("%s", str); return; }
-    MultiByteToWideChar(CP_UTF8, 0, str, -1, wide_str, wide_len);
-
-    int ansi_len = WideCharToMultiByte(CP_ACP, 0, wide_str, -1, NULL, 0, NULL, NULL);
-    if (ansi_len <= 0) { free(wide_str); printw("%s", str); return; }
-
-    char* ansi_str = (char*)malloc(ansi_len);
-    if (!ansi_str) { free(wide_str); printw("%s", str); return; }
-    WideCharToMultiByte(CP_ACP, 0, wide_str, -1, ansi_str, ansi_len, NULL, NULL);
-
-    printw("%s", ansi_str);
-    free(wide_str);
-    free(ansi_str);
-}
-
-void garantir_arquivos_json() {
-    PyRun_SimpleString(
-        "import os\n"
-        "import json\n"
-        "import shutil\n"
-        "\n"
-        "BASE_DIR = os.path.dirname(os.path.abspath(__file__))\n"
-        "PYTHON_EMBEDDED_DIR = os.path.join(BASE_DIR, 'python_embedded')\n"
-        "\n"
-        "# DEBUG\n"
-        "print(f'DEBUG garantir_arquivos_json:')\n"
-        "print(f'  BASE_DIR: {BASE_DIR}')\n"
-        "print(f'  PYTHON_EMBEDDED_DIR: {PYTHON_EMBEDDED_DIR}')\n"
-        "print(f'  Python embedded existe: {os.path.exists(PYTHON_EMBEDDED_DIR)}')\n"
-        "\n"
-        "# Garante que a pasta python_embedded existe\n"
-        "os.makedirs(PYTHON_EMBEDDED_DIR, exist_ok=True)\n"
-        "\n"
-        "# Lista de arquivos JSON necessários\n"
-        "arquivos_json = ['users.json', 'turmas.json', 'alunos.json', 'matriculas.json', 'atividades.json', 'anuncios.json']\n"
-        "\n"
-        "for arquivo in arquivos_json:\n"
-        "    caminho_original = os.path.join(BASE_DIR, arquivo)\n"
-        "    caminho_destino = os.path.join(PYTHON_EMBEDDED_DIR, arquivo)\n"
-        "    \n"
-        "    print(f'\\\\nProcessando {arquivo}:')\n"
-        "    print(f'  Origem: {caminho_original}')\n"
-        "    print(f'  Destino: {caminho_destino}')\n"
-        "    \n"
-        "    # Se existe no diretório principal E não existe no destino, copia\n"
-        "    if os.path.exists(caminho_original) and not os.path.exists(caminho_destino):\n"
-        "        try:\n"
-        "            shutil.copy2(caminho_original, caminho_destino)\n"
-        "            print(f'  ✓ Copiado de {caminho_original}')\n"
-        "        except Exception as e:\n"
-        "            print(f'  ✗ Erro ao copiar: {e}')\n"
-        "    # Se já existe no destino\n"
-        "    elif os.path.exists(caminho_destino):\n"
-        "        print(f'  ✓ Já existe em python_embedded')\n"
-        "    # Se não existe em nenhum lugar, cria vazio\n"
-        "    else:\n"
-        "        try:\n"
-        "            if arquivo == 'users.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({'users': []}, f, indent=4, ensure_ascii=False)\n"
-        "            elif arquivo == 'turmas.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({'turmas': []}, f, indent=4, ensure_ascii=False)\n"
-        "            elif arquivo == 'alunos.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({}, f, indent=4, ensure_ascii=False)\n"
-        "            elif arquivo == 'matriculas.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({}, f, indent=4, ensure_ascii=False)\n"
-        "            elif arquivo == 'atividades.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({'atividades': []}, f, indent=4, ensure_ascii=False)\n"
-        "            elif arquivo == 'anuncios.json':\n"
-        "                with open(caminho_destino, 'w', encoding='utf-8') as f:\n"
-        "                    json.dump({'anuncios': []}, f, indent=4, ensure_ascii=False)\n"
-        "            print(f'  ✓ Criado vazio em python_embedded')\n"
-        "        except Exception as e:\n"
-        "            print(f'  ✗ Erro ao criar: {e}')\n"
-        "\n"
-        "print('\\\\n=== VERIFICAÇÃO FINAL ===')\n"
-        "for arquivo in arquivos_json:\n"
-        "    caminho_destino = os.path.join(PYTHON_EMBEDDED_DIR, arquivo)\n"
-        "    if os.path.exists(caminho_destino):\n"
-        "        print(f'✓ {arquivo} - OK')\n"
-        "    else:\n"
-        "        print(f'✗ {arquivo} - FALTA')\n"
-    );
-}
-
-// === FUNÇÃO: Limpa tela e atualiza ===
+/* Limpa a tela e atualiza o display */
 void limparTela() {
     clear();
     refresh();
 }
 
-// === FUNÇÃO: Desenha linha horizontal ===
+/* Desenha uma linha horizontal usando o caractere = na largura total da tela */
 void linha() {
     for (int i = 0; i < COLS; i++) printw("=");
     refresh();
 }
 
-// === FUNÇÃO: Obtém diretório do .exe ===
-wchar_t* get_exe_dir() {
-    wchar_t path[MAX_PATH];
-    if (GetModuleFileNameW(NULL, path, MAX_PATH) == 0) return NULL;
-    wchar_t* last = wcsrchr(path, L'\\');
-    if (last) *last = L'\0';
-    else return NULL;
-    return _wcsdup(path);
+/* Converte e exibe uma string UTF-8 corretamente no PDCurses (Windows) */
+void printw_utf8(const char* str) {
+    int wide_len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
+    if (wide_len <= 0) { printw("%s", str); return; }
+    wchar_t* wide = (wchar_t*)malloc(wide_len * sizeof(wchar_t));
+    if (!wide) { printw("%s", str); return; }
+    MultiByteToWideChar(CP_UTF8, 0, str, -1, wide, wide_len);
+    int ansi_len = WideCharToMultiByte(CP_ACP, 0, wide, -1, NULL, 0, NULL, NULL);
+    if (ansi_len > 0) {
+        char* ansi = (char*)malloc(ansi_len);
+        if (ansi) {
+            WideCharToMultiByte(CP_ACP, 0, wide, -1, ansi, ansi_len, NULL, NULL);
+            printw("%s", ansi);
+            free(ansi);
+        }
+    }
+    free(wide);
 }
 
-// === FUNÇÃO: Concatena wide strings ===
-wchar_t* wcs_concat(const wchar_t* a, const wchar_t* b) {
-    size_t la = wcslen(a), lb = wcslen(b);
-    wchar_t* r = (wchar_t*)malloc((la + lb + 1) * sizeof(wchar_t));
-    if (r) { wcscpy(r, a); wcscat(r, b); }
-    return r;
+/* Exibe o banner colorido de boas-vindas com o logo em ASCII art */
+void print_banner() {
+    init_pair(3, COLOR_CYAN, COLOR_BLACK);
+    init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(5, COLOR_GREEN, COLOR_BLACK);
+    init_pair(6, COLOR_WHITE, COLOR_BLACK);
+    init_pair(7, COLOR_BLUE, COLOR_BLACK);
+    init_pair(8, COLOR_MAGENTA, COLOR_BLACK);
+    char *banner_lines[] = {
+        "'######:::'########::'######::'########::::'###:::::'#######::",
+        "##...##:: '##.....::'##... ##:... ##..::::'## ##:::'##.... ##:",
+        "##:::..::: ##::::::: ##:::..::::: ##:::::'##:. ##:: ##:::: ##:",
+        "##::'####: ######:::. ######::::: ##::::'##:::. ##: ##:::: ##:",
+        "##::: ##:: ##...:::::..... ##:::: ##:::: #########: ##:::: ##:",
+        "##::: ##:: ##:::::::'##::: ##:::: ##:::: ##.... ##: ##:::: ##:",
+        ".######::: ########:. ######::::: ##:::: ##:::: ##:. #######::",
+        ":......::::........:::......::::::..:::::..:::::..:::.......::"
+    };
+    int line_colors[] = {3,4,4,5,3,7,4,5};
+    int bold_lines[] = {1,0,0,1,1,1,0,0};
+    for (int i = 0; i < 8; i++) {
+        int attr = bold_lines[i] ? A_BOLD : A_NORMAL;
+        attron(COLOR_PAIR(6) | attr);
+        for (int j = 0; banner_lines[i][j] != '\0'; j++) {
+            if (banner_lines[i][j] == '#') {
+                attroff(COLOR_PAIR(6));
+                attron(COLOR_PAIR(line_colors[i]) | attr);
+                addch('#');
+                attroff(COLOR_PAIR(line_colors[i]) | attr);
+                attron(COLOR_PAIR(6) | attr);
+            } else {
+                addch(banner_lines[i][j]);
+            }
+        }
+        attroff(COLOR_PAIR(6) | attr);
+        addch('\n');
+    }
+    linha();
+    attron(COLOR_PAIR(8) | A_BOLD);
+    printw("Bem-vindo ao sistema de gerenciamento!\n");
+    attroff(COLOR_PAIR(8) | A_BOLD);
+    linha();
 }
 
-// === FUNÇÃO: Força python_embedded no sys.path ===
-void force_python_path() {
+/* Cria os arquivos JSON necessários caso ainda não existam */
+void garantir_arquivos_json() {
     PyRun_SimpleString(
-        "import sys\n"
-        "import os\n"
-        "exe_dir = os.path.dirname(sys.executable)\n"
-        "embedded = os.path.join(exe_dir, 'python_embedded')\n"
-        "if embedded not in sys.path:\n"
-        "    sys.path.insert(0, embedded)\n"
+        "import os, json\n"
+        "dir = r'Z:\\python_embedded'\n"
+        "os.makedirs(dir, exist_ok=True)\n"
+        "arquivos = ['users.json','turmas.json','alunos.json','matriculas.json','atividades.json','anuncios.json']\n"
+        "for a in arquivos:\n"
+        " caminho = os.path.join(dir, a)\n"
+        " if not os.path.exists(caminho):\n"
+        " data = {'users':[]} if a=='users.json' else {'turmas':[]} if a=='turmas.json' else {'atividades':[]} if a=='atividades.json' else {'anuncios':[]} if a=='anuncios.json' else {}\n"
+        " with open(caminho,'w',encoding='utf-8') as f: json.dump(data,f,indent=4,ensure_ascii=False)\n"
     );
 }
 
-// === FUNÇÃO: Inicializa Python portavelmente ===
+/* Inicializa o interpretador Python embutido no diretório portátil Z:\python_embedded */
 int init_python_portable() {
-    wchar_t* exe_dir = get_exe_dir();
-    if (!exe_dir) {
-        fwprintf(stderr, L"Erro: não foi possível obter diretório.\n");
-        return 0;
-    }
-
-    wchar_t* python_embedded = wcs_concat(exe_dir, L"\\python_embedded");
-    wchar_t* lib_path = wcs_concat(python_embedded, L"\\Lib");
-    wchar_t* dlls_path = wcs_concat(python_embedded, L"\\DLLs");
-
-    if (!python_embedded || !lib_path || !dlls_path) {
-        free(exe_dir); free(python_embedded); free(lib_path); free(dlls_path);
-        return 0;
-    }
-
-    if (_waccess(python_embedded, 0) != 0) {
-        fwprintf(stderr, L"Pasta 'python_embedded' não encontrada: %ls\n", python_embedded);
-        free(exe_dir); free(python_embedded); free(lib_path); free(dlls_path);
-        return 0;
-    }
-
-    PyStatus status;
     PyConfig config;
+    PyStatus status;
     PyConfig_InitIsolatedConfig(&config);
-
-    status = PyConfig_SetString(&config, &config.home, python_embedded);
-    if (PyStatus_Exception(status)) goto py_err;
-
-    status = PyWideStringList_Append(&config.module_search_paths, python_embedded);
-    if (PyStatus_Exception(status)) goto py_err;
+    status = PyConfig_SetString(&config, &config.home, PYTHON_EMBEDDED_ROOT);
+    if (PyStatus_Exception(status)) goto erro;
+    wchar_t base[512];
+    wcscpy(base, PYTHON_EMBEDDED_ROOT);
+    wchar_t lib_path[512];
+    wchar_t dlls_path[512];
+    wcscpy(lib_path, base);
+    wcscat(lib_path, L"\\Lib");
+    wcscpy(dlls_path, base);
+    wcscat(dlls_path, L"\\DLLs");
     status = PyWideStringList_Append(&config.module_search_paths, lib_path);
-    if (PyStatus_Exception(status)) goto py_err;
+    if (PyStatus_Exception(status)) goto erro;
     status = PyWideStringList_Append(&config.module_search_paths, dlls_path);
-    if (PyStatus_Exception(status)) goto py_err;
-
-    wchar_t* prog_name = wcs_concat(exe_dir, L"\\PIMSeceAdm.exe");
-    status = PyConfig_SetString(&config, &config.program_name, prog_name);
-    free(prog_name);
-    if (PyStatus_Exception(status)) goto py_err;
-
+    if (PyStatus_Exception(status)) goto erro;
+    status = PyConfig_SetString(&config, &config.program_name, L"PIMSeceAdm.exe");
+    if (PyStatus_Exception(status)) goto erro;
     status = Py_InitializeFromConfig(&config);
-    if (PyStatus_Exception(status)) goto py_err;
-
+    if (PyStatus_Exception(status)) goto erro;
     PyConfig_Clear(&config);
-    free(exe_dir); free(python_embedded); free(lib_path); free(dlls_path);
-    force_python_path();
+    PyRun_SimpleString(
+        "import sys\n"
+        "sys.path.insert(0, r'Z:\\python_embedded')\n"
+    );
     return 1;
-
-py_err:
-    fwprintf(stderr, L"Erro Python: %ls\n", status.err_msg);
+erro:
     PyConfig_Clear(&config);
-    free(exe_dir); free(python_embedded); free(lib_path); free(dlls_path);
     return 0;
 }
 
-// === FUNÇÃO: Login com ADM.py ===
+/* Executa o processo completo de login chamando a função login() do módulo Python ADM */
 int rodarPythonLogin() {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
-
     char username[MAX_INPUT] = {0};
     char password[MAX_INPUT] = {0};
-
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -231,7 +149,6 @@ int rodarPythonLogin() {
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
-
     clear();
     printw("=== Sistema de Login ===\n");
     printw_utf8("Nome de usuário: ");
@@ -306,7 +223,6 @@ int rodarPythonLogin() {
         printw("\nLogin bem-sucedido! Carregando menu...\n");
         attroff(COLOR_PAIR(1));
         refresh(); napms(2000);
-
         if (strcmp(role, "admin") == 0) {
             endwin();
             menuAdmin();
@@ -320,61 +236,27 @@ int rodarPythonLogin() {
         attroff(COLOR_PAIR(2));
         refresh(); getch();
     }
-
     endwin();
     return success;
 }
 
-// === MENU PRINCIPAL ===
+/* Exibe o menu principal com navegação por setas e seleção com Enter */
 void menuPrincipal() {
     const char *opcoes[] = {"Login", "Sair"};
     int num_opcoes = 2, selecionado = 0, tecla;
-
     while (1) {
         limparTela(); linha();
-
-        init_pair(1, COLOR_BLUE,    COLOR_BLACK);
-        init_pair(2, COLOR_YELLOW,  COLOR_BLACK);
-        init_pair(3, COLOR_GREEN,   COLOR_BLACK);
-        init_pair(4, COLOR_MAGENTA, COLOR_BLACK);
-
-        attron(COLOR_PAIR(1) | A_BOLD);
-        printw("'######:::'########::'######::'########::::'###:::::'#######::\n");
-        printw("##...##:: '##.....::'##... ##:... ##..::::'## ##:::'##.... ##:\n");
-        attroff(COLOR_PAIR(1) | A_BOLD);
-
-        attron(COLOR_PAIR(2));
-        printw("##:::..::: ##::::::: ##:::..::::: ##:::::'##:. ##:: ##:::: ##:\n");
-        printw("##::'####: ######:::. ######::::: ##::::'##:::. ##: ##:::: ##:\n");
-        attroff(COLOR_PAIR(2));
-
-        attron(COLOR_PAIR(1) | A_BOLD);
-        printw("##::: ##:: ##...:::::..... ##:::: ##:::: #########: ##:::: ##:\n");
-        printw("##::: ##:: ##:::::::'##::: ##:::: ##:::: ##.... ##: ##:::: ##:\n");
-        attroff(COLOR_PAIR(1) | A_BOLD);
-
-        attron(COLOR_PAIR(2));
-        printw(".######::: ########:. ######::::: ##:::: ##:::: ##:. #######::\n");
-        printw(":......::::........:::......::::::..:::::..:::::..:::.......::\n");
-        attroff(COLOR_PAIR(2));
-
-        linha();
-        attron(COLOR_PAIR(4) | A_BOLD);
-        printw("Bem-vindo ao sistema de gerenciamento!\n");
-        attroff(COLOR_PAIR(4) | A_BOLD);
-        linha();
-
+        print_banner();
         for (int i = 0; i < num_opcoes; i++) {
             if (i == selecionado) {
-                attron(COLOR_PAIR(3));
+                attron(COLOR_PAIR(1));
                 printw("> %s\n", opcoes[i]);
-                attroff(COLOR_PAIR(3));
+                attroff(COLOR_PAIR(1));
             } else {
-                printw("  %s\n", opcoes[i]);
+                printw(" %s\n", opcoes[i]);
             }
         }
         linha(); refresh();
-
         tecla = getch();
         switch (tecla) {
             case KEY_UP:
@@ -383,7 +265,7 @@ void menuPrincipal() {
             case KEY_DOWN:
                 selecionado = (selecionado + 1) % num_opcoes;
                 break;
-            case 10:
+            case 10:  // Enter
                 if (selecionado == 0) {
                     limparTela();
                     rodarPythonLogin();
@@ -396,25 +278,22 @@ void menuPrincipal() {
                     return;
                 }
                 break;
-            default:
-                attron(COLOR_PAIR(2));
-                printw_utf8("\nTecla inválida. Use setas ou Enter. Tente novamente...\n");
-                attroff(COLOR_PAIR(2));
-                refresh(); napms(2000);
-                break;
         }
     }
 }
 
-// === FUNÇÃO PRINCIPAL ===
+/* Função principal: inicia Python, garante arquivos JSON, inicia ncurses e abre o menu */
 int main() {
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
 
     if (!init_python_portable()) {
+        system("pause");
         return 1;
     }
-	garantir_arquivos_json();
+
+    garantir_arquivos_json();
+
     initscr();
     keypad(stdscr, TRUE);
     cbreak();

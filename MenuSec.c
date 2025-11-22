@@ -15,63 +15,68 @@ void limparTela();
 void linha();
 void printw_utf8();
 
-// Menu Secretária
+/* Exibe o banner colorido específico do menu da Secretaria */
+void print_banner_sec(){
+    init_pair(3, COLOR_CYAN, COLOR_BLACK);
+    init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(5, COLOR_GREEN, COLOR_BLACK);
+    init_pair(6, COLOR_WHITE, COLOR_BLACK);
+    init_pair(7, COLOR_BLUE, COLOR_BLACK);
+   
+    char *banner_lines[] = {
+        " :'######::'########::'######::'########::'########:'########::::'###::::'########::'####::::'###::::",
+        " '##... ##: ##.....::'##... ##: ##.... ##: ##.....::... ##..::::'## ##::: ##.... ##:. ##::::'## ##:::",
+        " '##:::..:: ##::::::: ##:::..:: ##:::: ##: ##:::::::::: ##:::::'##:. ##:: ##:::: ##:: ##:::'##:. ##::",
+        " . ######:: ######::: ##::::::: ########:: ######:::::: ##::::'##:::. ##: ########::: ##::'##:::. ##:",
+        " :..... ##: ##...:::: ##::::::: ##.. ##::: ##...::::::: ##:::: #########: ##.. ##:::: ##:: #########:",
+        " '##::: ##: ##::::::: ##::: ##: ##::. ##:: ##:::::::::: ##:::: ##.... ##: ##::. ##::: ##:: ##.... ##:",
+        " . ######:: ########:. ######:: ##:::. ##: ########:::: ##:::: ##:::: ##: ##:::. ##:'####: ##:::: ##:",
+        " :......:::........:::......:::..:::::..::........:::::..:::::..:::::..::..:::::..::....::..:::::..::"
+    };
+   
+    int line_colors[] = {3, 4, 4, 5, 3, 7, 4, 5};
+    int bold_lines[] = {1, 0, 0, 1, 1, 1, 0, 0};
+   
+    for (int i = 0; i < 8; i++) {
+        int attr = bold_lines[i] ? A_BOLD : A_NORMAL;
+        attron(COLOR_PAIR(6) | attr);
+       
+        for (int j = 0; banner_lines[i][j] != '\0'; j++) {
+            if (banner_lines[i][j] == '#') {
+                attroff(COLOR_PAIR(6));
+                attron(COLOR_PAIR(line_colors[i]) | attr);
+                addch('#');
+                attroff(COLOR_PAIR(line_colors[i]) | attr);
+                attron(COLOR_PAIR(6) | attr);
+            } else {
+                addch(banner_lines[i][j]);
+            }
+        }
+        attroff(COLOR_PAIR(6) | attr);
+        addch('\n');
+    }
+}
+
+/* Exibe e controla o menu principal da Secretaria com navegação por setas */
 void menuSecretaria() {
     const char *opcoes[] = {
-        "Criar Matrícula", 
-        "Pesquisar por Matrícula", 
-        "Pesquisar por Documento", 
-        "Editar Dados do Aluno", 
+        "Criar Matrícula",
+        "Pesquisar por Matrícula",
+        "Pesquisar por Documento",
+        "Editar Dados do Aluno",
         "Sair"
     };
     int num_opcoes = 5;
     int selecionado = 0;
     int tecla;
-
     while (1) {
         limparTela();
         linha();
-        init_pair(3, COLOR_CYAN,     COLOR_BLACK);
-	    init_pair(4, COLOR_YELLOW,   COLOR_BLACK);
-	    init_pair(5, COLOR_MAGENTA,  COLOR_BLACK);
-	    init_pair(6, COLOR_WHITE,    COLOR_BLACK);
-	    init_pair(7, COLOR_BLUE,     COLOR_BLACK); 
-	
-
-	    attron(COLOR_PAIR(3) | A_BOLD);
-	    printw(" :'######::'########::'######::'########::'########:'########::::'###::::'########::'####::::'###::::\n");
-	    attroff(COLOR_PAIR(3) | A_BOLD);
-	
-	    attron(COLOR_PAIR(4));
-	    printw(" '##... ##: ##.....::'##... ##: ##.... ##: ##.....::... ##..::::'## ##::: ##.... ##:. ##::::'## ##:::\n");
-	    printw(" '##:::..:: ##::::::: ##:::..:: ##:::: ##: ##:::::::::: ##:::::'##:. ##:: ##:::: ##:: ##:::'##:. ##::\n");
-	    attroff(COLOR_PAIR(4));
-	
-	    attron(COLOR_PAIR(5) | A_BOLD);
-	    printw(" . ######:: ######::: ##::::::: ########:: ######:::::: ##::::'##:::. ##: ########::: ##::'##:::. ##:\n");
-	    attroff(COLOR_PAIR(5) | A_BOLD);
-	
-	    attron(COLOR_PAIR(3) | A_BOLD);
-	    printw(" :..... ##: ##...:::: ##::::::: ##.. ##::: ##...::::::: ##:::: #########: ##.. ##:::: ##:: #########:\n");
-	    attroff(COLOR_PAIR(3) | A_BOLD);
-	
-	    attron(COLOR_PAIR(7) | A_BOLD);
-	    printw(" '##::: ##: ##::::::: ##::: ##: ##::. ##:: ##:::::::::: ##:::: ##.... ##: ##::. ##::: ##:: ##.... ##:\n");
-	    attroff(COLOR_PAIR(7) | A_BOLD);
-	
-	    attron(COLOR_PAIR(4));
-	    printw(" . ######:: ########:. ######:: ##:::. ##: ########:::: ##:::: ##:::: ##: ##:::. ##:'####: ##:::: ##:\n");
-	    attroff(COLOR_PAIR(4));
-	
-	    attron(COLOR_PAIR(5));
-	    printw(" :......:::........:::......:::..:::::..::........:::::..:::::..:::::..::..:::::..::....::..:::::..::\n");
-	    attroff(COLOR_PAIR(5));
-		linha();
-	    printw("\n");
-        printw_utf8("=== Sistema de Matrículas - Secretaria ===");
-        printw("\n");
+        print_banner_sec();
         linha();
-        
+        printw_utf8("=== Sistema de Matrículas - Secretaria ===\n");
+        linha();
+       
         for (int i = 0; i < num_opcoes; i++) {
             if (i == selecionado) {
                 attron(COLOR_PAIR(1));
@@ -87,7 +92,6 @@ void menuSecretaria() {
         }
         linha();
         refresh();
-
         tecla = getch();
         switch (tecla) {
             case KEY_UP:
@@ -99,16 +103,28 @@ void menuSecretaria() {
             case 10: // Enter
                 switch (selecionado) {
                     case 0: // Criar Matrícula
-                        menuCadastroMatricula();
+                        if (pythonCriarMatricula()) {
+                            mostrarMensagem("Matrícula criada com sucesso!", 1);
+                        } else {
+                            mostrarMensagem("Erro ao criar matrícula!", 2);
+                        }
+                        aguardarEnter();
                         break;
                     case 1: // Pesquisar por Matrícula
-                        menuBuscarMatricula();
+                        pythonBuscarPorMatricula();
+                        aguardarEnter();
                         break;
                     case 2: // Pesquisar por Documento
-                        menuBuscarDocumento();
+                        pythonBuscarPorDocumento();
+                        aguardarEnter();
                         break;
                     case 3: // Editar Dados
-                        menuEditarMatricula();
+                        if (pythonEditarMatricula()) {
+                            mostrarMensagem("Dados atualizados com sucesso!", 1);
+                        } else {
+                            mostrarMensagem("Erro ao editar matrícula!", 2);
+                        }
+                        aguardarEnter();
                         break;
                     case 4: // Sair
                         limparTela();
@@ -120,109 +136,29 @@ void menuSecretaria() {
                         return;
                 }
                 break;
-            default:
-                break;
         }
     }
 }
 
-// Menu Cadastro de Matrícula
-void menuCadastroMatricula() {
-    limparTela();
-    linha();
-    printw_utf8("=== Criar Matrícula ===\n");
-    linha();
-    
-    if (pythonCriarMatricula()) {
-        mostrarMensagem("Matrícula criada com sucesso!", 1);
-    } else {
-        mostrarMensagem("Erro ao criar matrícula!", 2);
-    }
-    aguardarEnter();
-}
-
-// Menu Buscar por Matrícula
-void menuBuscarMatricula() {
-    limparTela();
-    linha();
-    printw_utf8("=== Buscar Aluno por Matrícula ===\n");
-    linha();
-    
-    if (pythonBuscarPorMatricula()) {
-        // Sucesso - a mensagem é mostrada pela função Python
-    } else {
-        mostrarMensagem("Matrícula não encontrada!", 2);
-    }
-    aguardarEnter();
-}
-
-// Menu Buscar por Documento
-void menuBuscarDocumento() {
-    limparTela();
-    linha();
-    printw_utf8("=== Buscar Aluno por Documento ===\n");
-    linha();
-    
-    if (pythonBuscarPorDocumento()) {
-        // Sucesso - a mensagem é mostrada pela função Python
-    } else {
-        mostrarMensagem("Documento não encontrado!", 2);
-    }
-    aguardarEnter();
-}
-
-// Menu Editar Matrícula
-void menuEditarMatricula() {
-    limparTela();
-    linha();
-    printw_utf8("=== Editar Matrícula ===\n");
-    linha();
-    
-    if (pythonEditarMatricula()) {
-        mostrarMensagem("Dados atualizados com sucesso!", 1);
-    } else {
-        mostrarMensagem("Erro ao editar matrícula!", 2);
-    }
-    aguardarEnter();
-}
-
-// Wrappers para funções de matrícula
+/* Chama a função Python criar_matricula() e retorna sucesso (1) ou falha (0) */
 int pythonCriarMatricula() {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
-
-    PyObject *pModule, *pFunc, *pValue;
-    
-    pModule = PyImport_ImportModule("cadastrosecretaria");
-    if (pModule == NULL) {
-        PyErr_Print();
-        initscr();
-        return 0;
-    }
-
-    pFunc = PyObject_GetAttrString(pModule, "criar_matricula");
-    if (pFunc == NULL || !PyCallable_Check(pFunc)) {
-        PyErr_Print();
-        Py_DECREF(pModule);
-        initscr();
-        return 0;
-    }
-
-    pValue = PyObject_CallObject(pFunc, NULL);
-
+    PyObject *pModule = PyImport_ImportModule("cadastrosecretaria");
+    if (!pModule) { PyErr_Print(); initscr(); return 0; }
+    PyObject *pFunc = PyObject_GetAttrString(pModule, "criar_matricula");
+    if (!pFunc || !PyCallable_Check(pFunc)) { Py_DECREF(pModule); initscr(); return 0; }
+    PyObject *pValue = PyObject_CallObject(pFunc, NULL);
     int success = 0;
-    if (pValue != NULL) {
+    if (pValue) {
         PyObject *pSuccess = PyTuple_GetItem(pValue, 0);
         success = PyObject_IsTrue(pSuccess);
         Py_DECREF(pValue);
-    } else {
-        PyErr_Print();
     }
-
     Py_DECREF(pFunc);
     Py_DECREF(pModule);
-    
+   
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -230,45 +166,25 @@ int pythonCriarMatricula() {
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
-    
+   
     return success;
 }
 
+/* Chama a função Python editar_matricula() e retorna sucesso (1) ou falha (0) */
 int pythonEditarMatricula() {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
-
-    PyObject *pModule, *pFunc, *pValue;
-    
-    pModule = PyImport_ImportModule("cadastrosecretaria");
-    if (pModule == NULL) {
-        PyErr_Print();
-        initscr();
-        return 0;
-    }
-
-    pFunc = PyObject_GetAttrString(pModule, "editar_matricula");
-    if (pFunc == NULL || !PyCallable_Check(pFunc)) {
-        PyErr_Print();
-        Py_DECREF(pModule);
-        initscr();
-        return 0;
-    }
-
-    pValue = PyObject_CallObject(pFunc, NULL);
-
-    int success = 0;
-    if (pValue != NULL) {
-        success = PyObject_IsTrue(pValue);
-        Py_DECREF(pValue);
-    } else {
-        PyErr_Print();
-    }
-
+    PyObject *pModule = PyImport_ImportModule("cadastrosecretaria");
+    if (!pModule) { PyErr_Print(); initscr(); return 0; }
+    PyObject *pFunc = PyObject_GetAttrString(pModule, "editar_matricula");
+    if (!pFunc || !PyCallable_Check(pFunc)) { Py_DECREF(pModule); initscr(); return 0; }
+    PyObject *pValue = PyObject_CallObject(pFunc, NULL);
+    int success = pValue ? PyObject_IsTrue(pValue) : 0;
+    Py_XDECREF(pValue);
     Py_DECREF(pFunc);
     Py_DECREF(pModule);
-    
+   
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -276,46 +192,29 @@ int pythonEditarMatricula() {
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
-    
+   
     return success;
 }
 
+/* Chama a função Python buscar_aluno_por_matricula() e exibe o resultado */
 int pythonBuscarPorMatricula() {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
-
-    PyObject *pModule, *pFunc, *pValue;
-    
-    pModule = PyImport_ImportModule("cadastrosecretaria");
-    if (pModule == NULL) {
-        PyErr_Print();
-        initscr();
-        return 0;
-    }
-
-    pFunc = PyObject_GetAttrString(pModule, "buscar_aluno_por_matricula");
-    if (pFunc == NULL || !PyCallable_Check(pFunc)) {
-        PyErr_Print();
-        Py_DECREF(pModule);
-        initscr();
-        return 0;
-    }
-
-    pValue = PyObject_CallObject(pFunc, NULL);
-
+    PyObject *pModule = PyImport_ImportModule("cadastrosecretaria");
+    if (!pModule) { PyErr_Print(); initscr(); return 0; }
+    PyObject *pFunc = PyObject_GetAttrString(pModule, "buscar_aluno_por_matricula");
+    if (!pFunc || !PyCallable_Check(pFunc)) { Py_DECREF(pModule); initscr(); return 0; }
+    PyObject *pValue = PyObject_CallObject(pFunc, NULL);
     int success = 0;
-    if (pValue != NULL) {
+    if (pValue) {
         PyObject *pSuccess = PyTuple_GetItem(pValue, 0);
         success = PyObject_IsTrue(pSuccess);
         Py_DECREF(pValue);
-    } else {
-        PyErr_Print();
     }
-
     Py_DECREF(pFunc);
     Py_DECREF(pModule);
-    
+   
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -323,46 +222,29 @@ int pythonBuscarPorMatricula() {
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
-    
+   
     return success;
 }
 
+/* Chama a função Python buscar_aluno_por_documento() e exibe o resultado */
 int pythonBuscarPorDocumento() {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
     setlocale(LC_ALL, "pt_BR.UTF-8");
-
-    PyObject *pModule, *pFunc, *pValue;
-    
-    pModule = PyImport_ImportModule("cadastrosecretaria");
-    if (pModule == NULL) {
-        PyErr_Print();
-        initscr();
-        return 0;
-    }
-
-    pFunc = PyObject_GetAttrString(pModule, "buscar_aluno_por_documento");
-    if (pFunc == NULL || !PyCallable_Check(pFunc)) {
-        PyErr_Print();
-        Py_DECREF(pModule);
-        initscr();
-        return 0;
-    }
-
-    pValue = PyObject_CallObject(pFunc, NULL);
-
+    PyObject *pModule = PyImport_ImportModule("cadastrosecretaria");
+    if (!pModule) { PyErr_Print(); initscr(); return 0; }
+    PyObject *pFunc = PyObject_GetAttrString(pModule, "buscar_aluno_por_documento");
+    if (!pFunc || !PyCallable_Check(pFunc)) { Py_DECREF(pModule); initscr(); return 0; }
+    PyObject *pValue = PyObject_CallObject(pFunc, NULL);
     int success = 0;
-    if (pValue != NULL) {
+    if (pValue) {
         PyObject *pSuccess = PyTuple_GetItem(pValue, 0);
         success = PyObject_IsTrue(pSuccess);
         Py_DECREF(pValue);
-    } else {
-        PyErr_Print();
     }
-
     Py_DECREF(pFunc);
     Py_DECREF(pModule);
-    
+   
     initscr();
     keypad(stdscr, TRUE);
     cbreak();
@@ -370,6 +252,6 @@ int pythonBuscarPorDocumento() {
     start_color();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
-    
+   
     return success;
 }
