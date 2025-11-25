@@ -1,0 +1,74 @@
+{
+    "notas": [
+        {
+            "turma_id": 1,
+            "atividade_id": 1,
+            "matricula": "T5A3MO",
+            "nota": 8.5
+        },
+        {
+            "turma_id": 2,
+            "atividade_id": 2,
+            "matricula": "T5A3MO",
+            "nota": 2.0
+        },
+        {
+            "turma_id": 2,
+            "atividade_id": 2,
+            "matricula": "MF1MIB",
+            "nota": 3.0
+        },
+        {
+            "turma_id": 3,
+            "atividade_id": 3,
+            "matricula": "X7K9PQ",
+            "nota": 10.0
+        },
+        {
+            "turma_id": 3,
+            "atividade_id": 3,
+            "matricula": "B2N4RT",
+            "nota": 7.5
+        },
+        {
+            "turma_id": 1,
+            "atividade_id": 4,
+            "matricula": "T5A3MO",
+            "nota": 10.0,
+            "aluno_nome": "felipenes antonio freitas pinto",
+            "atividade_descricao": "questionario valendo 10 pontos"
+        },
+        {
+            "turma_id": 2,
+            "atividade_id": 2,
+            "matricula": "X7K9PQ",
+            "nota": 10.0,
+            "aluno_nome": "maria clara oliveira",
+            "atividade_descricao": "Entregar relatório sobre biologia celular"
+        },
+        {
+            "turma_id": 1,
+            "atividade_id": 1,
+            "matricula": "T5A3MO",
+            "nota": 10.0
+        },
+        {
+            "turma_id": 1,
+            "atividade_id": 1,
+            "matricula": "KNAF3G",
+            "nota": 10.0
+        },
+        {
+            "turma_id": 1,
+            "atividade_id": 1,
+            "matricula": "T5A3MO",
+            "nota": 10.0
+        },
+        {
+            "turma_id": 1,
+            "atividade_id": 1,
+            "matricula": "KNAF3G",
+            "nota": 10.0
+        }
+    ]
+}

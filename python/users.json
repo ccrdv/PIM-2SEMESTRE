@@ -43,6 +43,28 @@
             "endereco": "av central 300",
             "sexo": "f",
             "role": "professor"
+        },
+        {
+            "username": "diretor",
+            "password": "12345678",
+            "nome_completo": "fernando de moreira santos",
+            "documento": "419.914.234-12",
+            "data_nascimento": "11/11/1980",
+            "telefone": "(18) 99764-2345",
+            "endereco": "avenida siqueira campos vila central 218",
+            "sexo": "m",
+            "role": "admin"
+        },
+        {
+            "username": "lherme",
+            "password": "123",
+            "nome_completo": "guilherme alberto biason",
+            "documento": "123.321.123-56",
+            "data_nascimento": "12/10/2003",
+            "telefone": "(18) 99754-3456",
+            "endereco": "alameda das rolinhas 3",
+            "sexo": "m",
+            "role": "professor"
         }
     ]
 }

@@ -157,86 +157,70 @@ def registrar_presenca(professor_username):
     sleep()
 
 # Permite ao professor atribuir notas para atividades de uma turma
-def atribuir_notas(professor_username):
-    turmas = get_turmas_professor(professor_username)
-    if not turmas:
-        print("\033[31mNenhuma turma assignada a você.\033[m")
-        sleep()
-        return
-
-    clear()
-    linha()
-    print("=== Atribuir Notas ===")
-    linha()
-    for i, turma in enumerate(turmas, 1):
-        print(f"{i}. {turma['nome_turma']} (ID: {turma['id']})")
-    linha()
-    escolha = input("Selecione a turma (número) ou Enter para cancelar: ").strip()
-    if not escolha:
-        return
-    try:
-        index = int(escolha) - 1
-        turma = turmas[index]
-    except:
-        print("\033[31mSeleção inválida.\033[m")
-        sleep()
+def atribuir_notas_com_ids(turma_id, atividade_id):
+    """
+    Recebe os IDs já validados pelo C.
+    Só faz o trabalho de ler alunos, pedir notas e salvar no JSON.
+    """
+    turmas_data = carregar_json(TURMAS_FILE, "turmas")
+    turma = None
+    for t in turmas_data.get("turmas", []):
+        if t["id"] == turma_id:
+            turma = t
+            break
+    if not turma:
+        print("\033[31mTurma não encontrada.\033[m")
+        sleep(2)
         return
 
     atividades_data = carregar_json(ATIVIDADES_FILE, "atividades")
-    atividades = [atv for atv in atividades_data["atividades"] if atv.get("turma_id") == turma['id']]
-    if not atividades:
-        print("\033[31mNenhuma atividade na turma.\033[m")
-        sleep()
-        return
-
-    for i, atv in enumerate(atividades, 1):
-        print(f"{i}. {atv['descricao']} (ID: {atv['id']})")
-    linha()
-    escolha_atv = input("Selecione a atividade (número) ou Enter para cancelar: ").strip()
-    if not escolha_atv:
-        return
-    try:
-        index_atv = int(escolha_atv) - 1
-        atividade = atividades[index_atv]
-    except:
-        print("\033[31mSeleção inválida.\033[m")
-        sleep()
+    atividade = None
+    for a in atividades_data.get("atividades", []):
+        if a.get("atividade_id") == atividade_id and a.get("turma_id") == turma_id:
+            atividade = a
+            break
+    if not atividade:
+        print("\033[31mAtividade não encontrada.\033[m")
+        sleep(2)
         return
 
     alunos = turma.get("alunos", [])
     if not alunos:
-        print("\033[31mNenhuma aluno na turma.\033[m")
-        sleep()
+        print("\033[31mNenhum aluno na turma.\033[m")
+        sleep(2)
         return
 
     notas_data = carregar_json(NOTAS_FILE, "notas")
 
-    print(f"Atribuindo notas para {atividade['descricao']} em {turma['nome_turma']}")
+    clear()
     linha()
+    print(f"Atribuindo notas: {atividade['descricao']}")
+    print(f"Turma: {turma['nome_turma']}")
+    linha()
+
     for aluno in alunos:
         while True:
-            nota_str = input(f"{aluno['nome']} ({aluno['matricula']}): Nota (0-10) ou Enter para pular: ").strip()
-            if not nota_str:
+            nota_str = input(f"{aluno['nome']} ({aluno['matricula']}): ").strip()
+            if nota_str == "":
                 break
             try:
                 nota = float(nota_str)
                 if 0 <= nota <= 10:
                     notas_data["notas"].append({
-                        "turma_id": turma['id'],
-                        "atividade_id": atividade['id'],
+                        "turma_id": turma_id,
+                        "atividade_id": atividade_id,
                         "matricula": aluno['matricula'],
                         "nota": nota
                     })
                     break
                 else:
-                    print("\033[31mNota deve ser entre 0 e 10.\033[m")
-            except ValueError:
-                print("\033[31mEntrada inválida.\033[m")
+                    print("\033[31mNota deve estar entre 0 e 10.\033[m")
+            except:
+                print("\033[31mDigite um número válido.\033[m")
 
     salvar_json(NOTAS_FILE, notas_data)
-    print("\033[32mNotas atribuídas!\033[m")
-    sleep()
-
+    print("\033[32mNotas salvas com sucesso!\033[m")
+    sleep(2)
 # Autentica professor e retorna o nome completo em caso de sucesso
 def login_professor():
     clear()
@@ -270,7 +254,7 @@ def login_professor():
         print(f"Bem-vindo, {professor.get('nome_completo', 'Professor').title()}!") 
         linha()
         sleep()
-        return professor.get('nome_completo', 'Professor')
+        return professor.get("username")
     else:
         linha()
         print("\033[31mSenha inválida.\033[m")

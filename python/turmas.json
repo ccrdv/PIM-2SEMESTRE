@@ -2,7 +2,7 @@
     "turmas": [
         {
             "id": 1,
-            "nome_turma": "bio",
+            "nome_turma": "biologia",
             "professor": {
                 "nome": "braga mario penha",
                 "documento": "123.412.312-32",
@@ -14,12 +14,18 @@
                     "matricula": "T5A3MO",
                     "nome": "felipenes antonio freitas pinto",
                     "documento": "321.123.123-23"
+                },
+                {
+                    "numero": 2,
+                    "matricula": "KNAF3G",
+                    "nome": "maria carolina harue kubota",
+                    "documento": "285.154.508-60"
                 }
             ]
         },
         {
             "id": 2,
-            "nome_turma": "dois",
+            "nome_turma": "matematica",
             "professor": {
                 "nome": "braga mario penha",
                 "documento": "123.412.312-32",
@@ -43,12 +49,18 @@
                     "matricula": "X7K9PQ",
                     "nome": "maria clara oliveira",
                     "documento": "456.789.123-45"
+                },
+                {
+                    "numero": 4,
+                    "matricula": "0ILLIM",
+                    "nome": "matheus freitas fernandes",
+                    "documento": "123.321.123-12"
                 }
             ]
         },
         {
             "id": 3,
-            "nome_turma": "terceira",
+            "nome_turma": "geografia",
             "professor": {
                 "nome": "patricia dos anjos rei",
                 "documento": "321.123.321-23",

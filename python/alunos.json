@@ -1,5 +1,5 @@
 {
-    "felipenes": {
+    "felipe": {
         "password": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
         "matricula": "T5A3MO"
     },
@@ -14,5 +14,13 @@
     "joaopedro": {
         "password": "5f4dcc3b5aa765d61d8327deb882cf99",
         "matricula": "B2N4RT"
+    },
+    "matthy": {
+        "password": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+        "matricula": "0ILLIM"
+    },
+    "mcarolk": {
+        "password": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+        "matricula": "KNAF3G"
     }
 }

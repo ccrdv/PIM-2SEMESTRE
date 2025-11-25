@@ -1,45 +1,39 @@
 {
-    "atividades": [
-        {
-            "atividade_id": 1,
-            "turma_id": 1,
-            "descricao": "Responda as questões sobre algoritmos",
-            "submissoes": [
-                {
-                    "aluno_id": 1,
-                    "matricula": "T5A3MO",
-                    "arquivo": "submissoes/1/1/resposta_20251025_1947.txt",
-                    "data_envio": "2025-10-25 19:47",
-                    "status": "enviado"
-                }
-            ]
-        },
-        {
-            "atividade_id": 2,
-            "turma_id": 2,
-            "descricao": "Entregar relatório sobre biologia celular",
-            "submissoes": [
-                {
-                    "aluno_id": 2,
-                    "matricula": "T5A3MO",
-                    "arquivo": "submissoes/2/2/resposta_20251026_1812.txt",
-                    "data_envio": "2025-10-26 18:12",
-                    "status": "enviado"
-                },
-                {
-                    "aluno_id": 3,
-                    "matricula": "MF1MIB",
-                    "arquivo": "submissoes/2/2/resposta_20251027_0920.txt",
-                    "data_envio": "2025-10-27 09:20",
-                    "status": "enviado"
-                }
-            ]
-        },
-        {
-            "atividade_id": 3,
-            "turma_id": 3,
-            "descricao": "Prova de matemática básica",
-            "submissoes": []
-        }
-    ]
+	"atividades":	[{
+			"atividade_id":	1,
+			"turma_id":	1,
+			"descricao":	"bio",
+			"enunciado":	"Z:\\python_embedded\\atividades\\biologia\\1\\enunciado.txt",
+			"submissoes":	[{
+					"aluno_id":	"T5A3MO",
+					"arquivo":	"Z:\\python_embedded\\submissoes\\biologia\\T5A3MO\\1\\resposta_20251122_1754.txt",
+					"turma_id":	1,
+					"data_envio":	"2025-11-22 17:54",
+					"status":	"enviado"
+				}, {
+					"aluno_id":	"KNAF3G",
+					"arquivo":	"Z:\\python_embedded\\submissoes\\biologia\\KNAF3G\\1\\resposta_20251122_1914.txt",
+					"turma_id":	1,
+					"data_envio":	"2025-11-22 19:14",
+					"status":	"enviado"
+				}, {
+					"aluno_id":	"T5A3MO",
+					"arquivo":	"Z:\\python_embedded\\submissoes\\biologia\\T5A3MO\\1\\resposta_20251123_2057.txt",
+					"turma_id":	1,
+					"data_envio":	"2025-11-23 20:57",
+					"status":	"enviado"
+				}]
+		}, {
+			"atividade_id":	2,
+			"turma_id":	2,
+			"descricao":	"Questionario para avaliação",
+			"enunciado":	"Z:\\python_embedded\\atividades\\matematica\\2\\enunciado.txt",
+			"submissoes":	[{
+					"aluno_id":	"T5A3MO",
+					"arquivo":	"Z:\\python_embedded\\submissoes\\matematica\\T5A3MO\\2\\resposta_20251122_1918.txt",
+					"turma_id":	2,
+					"data_envio":	"2025-11-22 19:18",
+					"status":	"enviado"
+				}]
+		}]
 }

@@ -1,0 +1,96 @@
+{
+    "presencas": [
+        {
+            "data": "2025-11-05",
+            "turma_id": 1,
+            "presencas": [
+                {
+                    "matricula": "T5A3MO",
+                    "presente": true
+                }
+            ]
+        },
+        {
+            "data": "2025-11-06",
+            "turma_id": 2,
+            "presencas": [
+                {
+                    "matricula": "T5A3MO",
+                    "presente": true
+                },
+                {
+                    "matricula": "MF1MIB",
+                    "presente": false
+                },
+                {
+                    "matricula": "X7K9PQ",
+                    "presente": true
+                }
+            ]
+        },
+        {
+            "data": "2025-11-07",
+            "turma_id": 3,
+            "presencas": [
+                {
+                    "matricula": "X7K9PQ",
+                    "presente": true
+                },
+                {
+                    "matricula": "B2N4RT",
+                    "presente": false
+                }
+            ]
+        },
+        {
+            "data": "2025-11-07",
+            "turma_id": 1,
+            "turma_nome": "bio",
+            "professor": "braga mario penha",
+            "presencas": [
+                {
+                    "matricula": "T5A3MO",
+                    "presente": true,
+                    "nome": "felipenes antonio freitas pinto"
+                }
+            ]
+        },
+        {
+            "data": "2025-11-07",
+            "turma_id": 2,
+            "turma_nome": "dois",
+            "professor": "braga mario penha",
+            "presencas": [
+                {
+                    "matricula": "T5A3MO",
+                    "presente": false,
+                    "nome": "felipenes antonio freitas pinto"
+                },
+                {
+                    "matricula": "MF1MIB",
+                    "presente": true,
+                    "nome": "antonio lherme da silva"
+                },
+                {
+                    "matricula": "X7K9PQ",
+                    "presente": false,
+                    "nome": "maria clara oliveira"
+                }
+            ]
+        },
+        {
+            "data": "2025-11-23",
+            "turma_id": 1,
+            "presencas": [
+                {
+                    "matricula": "T5A3MO",
+                    "presente": true
+                },
+                {
+                    "matricula": "KNAF3G",
+                    "presente": false
+                }
+            ]
+        }
+    ]
+}
