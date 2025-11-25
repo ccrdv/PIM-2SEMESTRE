@@ -7,7 +7,7 @@
 #include <wchar.h>
 #include <Python.h>
 
-// === GLOBALS ===
+// === GLOBAIS ===
 extern char* nome_professor_logado;
 extern char* aluno_matricula_logado;
 extern char* ROOT_PATH;
@@ -15,6 +15,7 @@ extern char* ROOT_PATH;
 // === UI ===
 void limparTela(void);
 void linha(void);
+void reiniciar_cores(void);
 
 // === MENUS ===
 void menuPrincipal(void);
@@ -23,11 +24,14 @@ void menuProfessor(void);
 void menuLogadoProf(void);
 void menuLogadoAluno(void);
 void menu_atividades_aluno(void);
+void menu_atividades_professor(void);
+void menu_criar_atividade(void);
+
 
 // === PYTHON BRIDGE ===
 int rodarPythonRegistrar(void);
 int rodarPythonLogin(void);
-int rodarPythonLoginProfessor(void);
+char* rodarPythonLoginProfessor(void);
 int python_registrar_presenca(const char *username);
 int python_atribuir_notas(const char *username);
 
@@ -38,15 +42,16 @@ char* get_caminho_embedded(const char* filename);
 int postar_anuncio(const char* mensagem);
 void ver_anuncios(void);
 int atualizar_json_submissao(int atividade_id, const char* aluno_matricula, const char* caminho_arquivo, int turma_id);
+void atribuir_notas_interativo(void);
 
-// === ACTIVITIES ===
+// === ATIVIDADES ===
 void listar_submissoes(int atividade_id);
 int criar_atividade(const char* caminho_txt, const char* descricao, int turma_id);
 int get_next_atividade_id(void);
 void exibir_enunciado_atividade(int atividade_id);
 int menu_responder_atividade(int atividade_id, int turma_id);
 
-// === TURMA MANAGEMENT ===
+// === GESTÃO DE TURMAS ===
 char* obter_nome_turma_por_id(int turma_id);
 int enviar_arquivo(const char* caminho_origem, const char* aluno_matricula, int atividade_id, int turma_id);
 

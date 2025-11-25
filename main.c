@@ -13,6 +13,7 @@
 #include "cJSON.h"
 #include "utils.h"
 
+
 void printw_utf8(const char* format, ...) {
     char buffer[1024];
     va_list args;
@@ -41,6 +42,17 @@ void printw_utf8(const char* format, ...) {
 
 void limparTela(void) { clear(); refresh(); }
 void linha(void) { for (int i = 0; i < COLS; i++) printw("="); refresh(); }
+
+void reiniciar_cores(void) {
+    start_color();
+    init_pair(1, COLOR_GREEN,  COLOR_BLACK);
+    init_pair(2, COLOR_RED,    COLOR_BLACK);
+    init_pair(3, COLOR_CYAN,   COLOR_BLACK);
+    init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(5, COLOR_BLUE,   COLOR_BLACK);
+    init_pair(6, COLOR_WHITE,  COLOR_BLACK);
+    init_pair(7, COLOR_MAGENTA,COLOR_BLACK);
+}
 
 char* nome_professor_logado = NULL;
 char* aluno_matricula_logado = NULL;
@@ -72,7 +84,7 @@ int load_config(void) {
     }
     fclose(fp);
 
-    // fallback final
+   
     if (_access("Z:\\python_embedded", 0) == 0) {
         ROOT_PATH = _strdup("Z:\\python_embedded");
     }
@@ -185,13 +197,42 @@ void garantir_arquivos_json(void) {
     PyRun_SimpleString(code);
 }
 
+void abrirManual(void) {
+    const char* base_dir = ROOT_PATH ? ROOT_PATH : "Z:\\python_embedded";
+    char caminho_exe_dir[512];
+    GetModuleFileNameA(NULL, caminho_exe_dir, sizeof(caminho_exe_dir));
+    char* ultima_barra = strrchr(caminho_exe_dir, '\\');
+    if (ultima_barra) *ultima_barra = '\0';
+    strcat(caminho_exe_dir, "\\Manual.pdf");
+
+    if (_access(caminho_exe_dir, 0) == 0) {
+        ShellExecuteA(NULL, "open", caminho_exe_dir, NULL, NULL, SW_SHOWNORMAL);
+        return;
+    }
+
+    char caminho_z[512];
+    snprintf(caminho_z, sizeof(caminho_z), "%s\\Manual.pdf", base_dir);
+
+    if (_access(caminho_z, 0) == 0) {
+        ShellExecuteA(NULL, "open", caminho_z, NULL, NULL, SW_SHOWNORMAL);
+        return;
+    }
+
+	limparTela();
+    linha();
+    attron(COLOR_PAIR(2));
+    printw_utf8("Manual do usuário não encontrado!\n");
+    printw_utf8("Verifique se o arquivo 'Manual.pdf' está na pasta do programa.\n");
+    attroff(COLOR_PAIR(2));
+    linha();
+    printw_utf8("Pressione qualquer tecla para continuar...\n");
+    getch();
+}
+
 PyObject* safe_import_module(const char* module_name) {
     return PyImport_ImportModule(module_name);
 }
 
-/* ------------------------------------------------- */
-/*  Funções que chamam os scripts Python (sem debug) */
-/* ------------------------------------------------- */
 int rodarPythonRegistrar(void) {
     endwin(); SetConsoleOutputCP(65001);
     PyObject* pModule = safe_import_module("registroaluno");
@@ -207,8 +248,7 @@ int rodarPythonRegistrar(void) {
     int result = (pValue && PyObject_IsTrue(pValue));
     Py_XDECREF(pValue); Py_DECREF(pFunc); Py_DECREF(pModule);
 
-    initscr(); keypad(stdscr, TRUE); cbreak(); noecho();
-    start_color();
+    initscr(); keypad(stdscr, TRUE); cbreak(); noecho(); reiniciar_cores();
     return result;
 }
 
@@ -235,41 +275,43 @@ int rodarPythonLogin(void) {
     }
     Py_XDECREF(pValue); Py_DECREF(pFunc); Py_DECREF(pModule);
 
-    initscr(); keypad(stdscr, TRUE); cbreak(); noecho();
-    start_color();
+    initscr(); keypad(stdscr, TRUE); cbreak(); noecho(); reiniciar_cores();
     return result;
 }
 
-int rodarPythonLoginProfessor(void) {
-    endwin(); SetConsoleOutputCP(65001);
+char* rodarPythonLoginProfessor(void) {
+    endwin();
+    SetConsoleOutputCP(65001);
     PyObject* pModule = safe_import_module("LoginProfessor");
-    if (!pModule) { initscr(); return 0; }
-
+    if (!pModule) {
+        initscr();
+        return NULL;
+    }
     PyObject* pFunc = PyObject_GetAttrString(pModule, "login_professor");
     if (!pFunc || !PyCallable_Check(pFunc)) {
         Py_DECREF(pModule);
-        initscr(); return 0;
+        initscr();
+        return NULL;
     }
-
     PyObject* pValue = PyObject_CallObject(pFunc, NULL);
-    int result = 0;
-    if (pValue && pValue != Py_None) {
-        const char* name = PyUnicode_AsUTF8(pValue);
-        if (name) {
-            if (nome_professor_logado) free(nome_professor_logado);
-            nome_professor_logado = strdup(name);
-            result = 1;
+    char* resultado = NULL;
+    if (pValue && pValue != Py_None && PyUnicode_Check(pValue)) {
+        const char* str = PyUnicode_AsUTF8(pValue);
+        if (str && strlen(str) > 0) {
+            resultado = strdup(str); // retorna o username (ex: "bragamp")
         }
-        Py_DECREF(pValue);
     }
-    Py_DECREF(pFunc); Py_DECREF(pModule);
-
-    initscr(); keypad(stdscr, TRUE); cbreak(); noecho();
-    start_color();
-    return result;
+    Py_XDECREF(pValue);
+    Py_DECREF(pFunc);
+    Py_DECREF(pModule);
+    initscr();
+    keypad(stdscr, TRUE);
+    cbreak();
+    noecho();
+    reiniciar_cores();
+    return resultado; // agora retorna char*, não int!
 }
 
-/* ------------------- Menus ------------------- */
 void menuAluno(void) {
     const char* opcoes[] = {"Login", "Registrar", "Voltar"};
     int num_opcoes = 3, sel = 0, tecla;
@@ -323,9 +365,23 @@ void menuProfessor(void) {
             case KEY_DOWN: sel = (sel + 1) % num_opcoes; break;
             case 10:
                 if (sel == 0) {
-                    if (rodarPythonLoginProfessor()) {
-                        menuLogadoProf();
-                    }
+                    char* resultado = rodarPythonLoginProfessor();
+					if (resultado && strlen(resultado) > 0) {
+					    if (nome_professor_logado) free(nome_professor_logado);
+					    nome_professor_logado = strdup(resultado);
+					    free(resultado);
+					    menuLogadoProf();
+					} else {
+					    free(resultado);
+					    limparTela();
+					    linha();
+					    attron(COLOR_PAIR(2));
+					    printw_utf8("Login cancelado ou falhou.\n");
+					    attroff(COLOR_PAIR(2));
+					    linha();
+					    printw_utf8("Pressione qualquer tecla...\n");
+					    getch();
+					}
                 } else if (sel == 1) {
                     return;
                 }
@@ -338,8 +394,8 @@ void menuLogadoAluno(void);
 void menuLogadoProf(void);
 
 void menuPrincipal(void) {
-    const char* opcoes[] = {"Aluno", "Professor", "Sair"};
-    int num_opcoes = 3, sel = 0, tecla;
+    const char* opcoes[] = {"Aluno", "Professor", "Manual", "Sair"};
+    int num_opcoes = 4, sel = 0, tecla;
 
     while (1) {
         limparTela(); linha();
@@ -358,7 +414,8 @@ void menuPrincipal(void) {
             case 10:
                 if (sel == 0) menuAluno();
                 else if (sel == 1) menuProfessor();
-                else if (sel == 2) { limparTela(); printw("Saindo...\n"); refresh(); napms(1000); return; }
+                else if (sel == 2) abrirManual();
+                else if (sel == 3) { limparTela(); printw("Saindo...\n"); refresh(); napms(1000); return; }
                 break;
         }
     }
@@ -380,8 +437,7 @@ int main(void) {
     if (!init_python_portable()) return 1;
     garantir_arquivos_json();
 
-    initscr(); keypad(stdscr, TRUE); cbreak(); noecho();
-    start_color();
+    initscr(); keypad(stdscr, TRUE); cbreak(); noecho(); reiniciar_cores();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
     init_pair(7, COLOR_MAGENTA, COLOR_BLACK);

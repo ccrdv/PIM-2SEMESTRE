@@ -7,13 +7,14 @@ void menuAdmin();
 void menuRemoverUsuario();
 void menuGerenciarMatriculas();
 void menuCriarTurma();
-void menuGerenciarTurmas();  // NOVA FUNÇÃO
+void menuGerenciarTurmas();
+void menuRelatorios();
 
 // Funções Python wrapper para ADM
 int pythonRegister();
 int pythonRemoverUsuario(const char* documento);
 int pythonCriarTurma();
-int pythonGerenciarTurmas();  // NOVA FUNÇÃO
+int pythonGerenciarTurmas();
 
 // Funções auxiliares
 void mostrarMensagem(const char* mensagem, int cor);

@@ -1,6 +1,7 @@
 #define _CRT_SECURE_NO_WARNINGS
 #define MAX_INPUT 256
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +19,17 @@ extern char *ROOT_PATH;
 extern char* nome_professor_logado;
 extern char* aluno_matricula_logado;
 
-// === NOVA FUNÇÃO: Obter nome da turma por ID ===
+
+void remover_aspas(char *str) {
+    char *start = str;
+    char *end = str + strlen(str) - 1;
+
+    while (*start && (*start == ' ' || *start == '\t' || *start == '"' || *start == '\'')) start++;
+    while (end >= start && (*end == ' ' || *end == '\t' || *end == '"' || *end == '\'' || *end == '\n' || *end == '\r')) end--;
+    *(end + 1) = '\0';
+    if (start != str) memmove(str, start, end - start + 2);
+}
+
 char* obter_nome_turma_por_id(int turma_id) {
     static char nome_turma[256] = "Turma Desconhecida";
     
@@ -369,19 +380,28 @@ int get_next_atividade_id() {
     return max_id + 1;
 }
 
-void menu_criar_atividade() {
+
+void menu_criar_atividade(void) {
     limparTela();
     linha();
-    printw_utf8("Criar Nova Atividade\n");
+    printw_utf8("=== Criar Nova Atividade ===\n");
     linha();
 
+    if (!nome_professor_logado) {
+        attron(COLOR_PAIR(2));
+        printw_utf8("Erro: Nenhum professor logado.\n");
+        attroff(COLOR_PAIR(2));
+        getch();
+        return;
+    }
+
+    // === 1. Carregar turmas.json ===
     char* caminho_turmas = encontrar_arquivo_json("turmas.json");
     FILE* fp = fopen(caminho_turmas, "r");
     if (!fp) {
         attron(COLOR_PAIR(2));
-        printw_utf8("Erro: turmas.json não encontrado.\n");
+        printw_utf8("Erro: turmas.json não encontrado!\n");
         attroff(COLOR_PAIR(2));
-        refresh();
         getch();
         return;
     }
@@ -396,130 +416,291 @@ void menu_criar_atividade() {
 
     cJSON* root = cJSON_Parse(buffer);
     free(buffer);
-    if (!root) {
+    if (!root || !cJSON_GetObjectItem(root, "turmas")) {
         attron(COLOR_PAIR(2));
-        printw_utf8("Erro ao ler turmas.json.\n");
+        printw_utf8("Erro ao ler turmas.json\n");
         attroff(COLOR_PAIR(2));
-        refresh();
         getch();
-        return;
-    }
-
-    cJSON* turmas = cJSON_GetObjectItem(root, "turmas");
-    if (!cJSON_IsArray(turmas)) {
         cJSON_Delete(root);
-        attron(COLOR_PAIR(2));
-        printw_utf8("Formato inválido em turmas.json.\n");
-        attroff(COLOR_PAIR(2));
-        refresh();
-        getch();
         return;
     }
 
-    int num_turmas = 0;
-    int turma_ids[100];
-    char* turma_nomes[100] = {0};
-    cJSON* turma = NULL;
-    cJSON_ArrayForEach(turma, turmas) {
-        cJSON* prof = cJSON_GetObjectItem(turma, "professor");
-        if (prof) {
-            const char* professor_nome = NULL;
-            
-            if (cJSON_IsString(prof)) {
-                professor_nome = prof->valuestring;
-            } 
-            else if (cJSON_IsObject(prof)) {
-                cJSON* prof_nome = cJSON_GetObjectItem(prof, "nome");
-                if (cJSON_IsString(prof_nome)) {
-                    professor_nome = prof_nome->valuestring;
-                }
+
+    typedef struct { int id; char nome[128]; } TurmaInfo;
+    TurmaInfo turmas[50];
+    int count = 0;
+
+    cJSON* array = cJSON_GetObjectItem(root, "turmas");
+    cJSON* item = NULL;
+
+    cJSON_ArrayForEach(item, array) {
+        cJSON* prof_obj = cJSON_GetObjectItem(item, "professor");
+        if (!prof_obj) continue;
+
+        cJSON* nome_prof = cJSON_GetObjectItem(prof_obj, "nome");
+        cJSON* username = cJSON_GetObjectItem(prof_obj, "username");
+
+        int pertence = 0;
+        if (nome_prof && cJSON_IsString(nome_prof)) {
+            if (_stricmp(nome_prof->valuestring, nome_professor_logado) == 0 ||
+                strstr(nome_prof->valuestring, nome_professor_logado)) {
+                pertence = 1;
             }
-            
-            if (professor_nome && _stricmp(professor_nome, nome_professor_logado) == 0) {
-                cJSON* id = cJSON_GetObjectItem(turma, "id");
-                cJSON* nome = cJSON_GetObjectItem(turma, "nome_turma");
-                if (!nome) {
-                    nome = cJSON_GetObjectItem(turma, "nome");
-                }
-                if (cJSON_IsNumber(id) && cJSON_IsString(nome)) {
-                    turma_ids[num_turmas] = id->valueint;
-                    turma_nomes[num_turmas] = strdup(nome->valuestring);
-                    num_turmas++;
-                }
+        }
+        if (!pertence && username && cJSON_IsString(username)) {
+            if (_stricmp(username->valuestring, nome_professor_logado) == 0) {
+                pertence = 1;
+            }
+        }
+
+        if (pertence) {
+            cJSON* id_obj = cJSON_GetObjectItem(item, "id");
+            cJSON* nome_turma = cJSON_GetObjectItem(item, "nome_turma");
+            if (!nome_turma) nome_turma = cJSON_GetObjectItem(item, "nome");
+
+            if (cJSON_IsNumber(id_obj) && cJSON_IsString(nome_turma) && count < 50) {
+                turmas[count].id = id_obj->valueint;
+                strncpy(turmas[count].nome, nome_turma->valuestring, 127);
+                turmas[count].nome[127] = '\0';
+                count++;
             }
         }
     }
     cJSON_Delete(root);
 
-    if (num_turmas == 0) {
-        printw_utf8("Nenhuma turma encontrada para você.\n");
-        refresh();
+    if (count == 0) {
+        attron(COLOR_PAIR(2));
+        printw_utf8("Você não tem turmas cadastradas.\n");
+        attroff(COLOR_PAIR(2));
+        linha();
+        printw_utf8("Pressione qualquer tecla...\n");
         getch();
         return;
     }
 
+   
     int selecionado = 0;
     int tecla;
+
     while (1) {
         limparTela();
         linha();
-        printw_utf8("Selecione a Turma:\n");
+        printw_utf8("Selecione a turma para a atividade:\n");
         linha();
-        for (int i = 0; i < num_turmas; i++) {
+
+        for (int i = 0; i < count; i++) {
             if (i == selecionado) {
                 attron(COLOR_PAIR(1));
-                printw_utf8("> %s (ID: %d)\n", turma_nomes[i], turma_ids[i]);
+                printw_utf8("> %s\n", turmas[i].nome);
                 attroff(COLOR_PAIR(1));
             } else {
-                printw_utf8("  %s (ID: %d)\n", turma_nomes[i], turma_ids[i]);
+                printw_utf8("  %s\n", turmas[i].nome);
             }
         }
-        linha();
-        refresh();
-        tecla = getch();
 
-        switch (tecla) {
-            case KEY_UP: selecionado = (selecionado - 1 + num_turmas) % num_turmas; break;
-            case KEY_DOWN: selecionado = (selecionado + 1) % num_turmas; break;
-            case 10: 
-                goto turma_selecionada;
-            default: break;
-        }
+        linha();
+        printw_utf8("^v Navegar | ENTER Confirmar | ESC Cancelar\n");
+        refresh();
+
+        tecla = getch();
+        if (tecla == KEY_UP)   selecionado = (selecionado - 1 + count) % count;
+        if (tecla == KEY_DOWN) selecionado = (selecionado + 1) % count;
+        if (tecla == 10) break;  // ENTER
+        if (tecla == 27) return; // ESC
     }
 
-turma_selecionada:
-    ;
-    int turma_id = turma_ids[selecionado];
+    int turma_id = turmas[selecionado].id;
+    char* nome_turma = turmas[selecionado].nome;
 
-    for (int i = 0; i < num_turmas; i++) free(turma_nomes[i]);
-
-    char caminho[256];
-    char desc[512];
+    // === 4. Descrição da atividade ===
     limparTela();
     linha();
-    printw_utf8("Digite o caminho do arquivo TXT da atividade, sem aspas:\n");
-    refresh();
+    printw_utf8("Turma: %s (ID: %d)\n", nome_turma, turma_id);
+    linha();
+    printw_utf8("Descrição da atividade (opcional):\n> ");
     echo();
-    getstr(caminho);
-    printw_utf8("Digite a descrição (opcional):\n");
-    getnstr(desc, 511);
+    char descricao[1024] = {0};
+    getnstr(descricao, 1020);
     noecho();
 
-    int resultado = criar_atividade(caminho, desc, turma_id);
+    // === 5. Caminho do enunciado (.txt) ===
+    printw_utf8("\nCaminho completo do enunciado (.txt):\n> ");
+    echo();
+    char caminho_txt[512] = {0};
+    getnstr(caminho_txt, 510);
+    noecho();
+
+    remover_aspas(caminho_txt);  // Remove aspas automaticamente
+
+    if (_access(caminho_txt, 0) != 0) {
+        attron(COLOR_PAIR(2));
+        printw_utf8("\nArquivo não encontrado: %s\n", caminho_txt);
+        attroff(COLOR_PAIR(2));
+        getch();
+        return;
+    }
+
+    // === 6. Criar atividade ===
+    char* descricao_utf8 = cp_to_utf8(descricao);
+    int resultado = criar_atividade(caminho_txt, descricao_utf8 ? descricao_utf8 : "Sem descrição", turma_id);
+    free(descricao_utf8);
+
+    limparTela();
+    linha();
     if (resultado == 0) {
         attron(COLOR_PAIR(1));
-        printw_utf8("Atividade criada com sucesso!\n");
+        printw_utf8("ATIVIDADE CRIADA COM SUCESSO!\n");
+        printw_utf8("Turma: %s\n", nome_turma);
+        printw_utf8("ID da atividade: %d\n", get_next_atividade_id() - 1);
         attroff(COLOR_PAIR(1));
     } else {
         attron(COLOR_PAIR(2));
-        printw_utf8("Erro ao criar atividade. Código: %d\n", resultado);
+        printw_utf8("ERRO AO CRIAR ATIVIDADE (código: %d)\n", resultado);
+        printw_utf8("Verifique se o arquivo .txt existe e se a turma está correta.\n");
         attroff(COLOR_PAIR(2));
     }
-    refresh();
+    linha();
+    printw_utf8("Pressione qualquer tecla para continuar...\n");
     getch();
 }
 
-// === NOVA FUNÇÃO: Visualizador interativo com paginação ===
+void atribuir_notas_interativo(void) {
+    if (!nome_professor_logado || !strlen(nome_professor_logado)) {
+        limparTela(); linha();
+        attron(COLOR_PAIR(2)); printw_utf8("Professor não logado!\n"); attroff(COLOR_PAIR(2));
+        linha(); printw_utf8("Pressione qualquer tecla...\n"); getch();
+        return;
+    }
+
+    // === Carregar turmas do professor (só para exibir) ===
+    char* caminho = encontrar_arquivo_json("turmas.json");
+    FILE* f = fopen(caminho, "r");
+    if (!f) { printw_utf8("Erro ao abrir turmas.json\n"); getch(); return; }
+
+    fseek(f, 0, SEEK_END); long sz = ftell(f); fseek(f, 0, SEEK_SET);
+    char* buf = malloc(sz + 1); fread(buf, 1, sz, f); buf[sz] = 0; fclose(f);
+    cJSON* root = cJSON_Parse(buf); free(buf);
+    if (!root) { fclose(f); return; }
+
+    typedef struct { int id; char nome[128]; } Turma;
+    Turma turmas[50]; int n = 0;
+
+    cJSON* array = cJSON_GetObjectItem(root, "turmas");
+    cJSON* t;
+    cJSON_ArrayForEach(t, array) {
+        cJSON* prof = cJSON_GetObjectItem(t, "professor");
+        cJSON* user = prof ? cJSON_GetObjectItem(prof, "username") : NULL;
+        cJSON* id = cJSON_GetObjectItem(t, "id");
+        cJSON* nome = cJSON_GetObjectItem(t, "nome_turma");
+        if (user && strcmp(user->valuestring, nome_professor_logado) == 0 &&
+            id && nome && n < 50) {
+            turmas[n].id = id->valueint;
+            strncpy(turmas[n].nome, nome->valuestring, 127);
+            n++;
+        }
+    }
+    cJSON_Delete(root);
+    if (n == 0) {
+        limparTela(); linha();
+        printw_utf8("Você não tem turmas cadastradas.\n");
+        linha(); printw_utf8("Pressione qualquer tecla...\n"); getch();
+        return;
+    }
+
+    // === Menu de turmas ===
+    int sel = 0, tecla;
+    while (1) {
+        limparTela(); linha();
+        printw_utf8("Selecione a Turma para Atribuir Notas\n");
+        linha();
+        for (int i = 0; i < n; i++) {
+            if (i == sel) { attron(COLOR_PAIR(1)); printw_utf8("> "); attroff(COLOR_PAIR(1)); }
+            else printw_utf8("  ");
+            printw_utf8("%d. %s (ID: %d)\n", i+1, turmas[i].nome, turmas[i].id);
+        }
+        linha(); printw_utf8("^v Navegar | ENTER Selecionar | ESC Cancelar\n"); refresh();
+
+        tecla = getch();
+        if (tecla == KEY_UP) sel = (sel - 1 + n) % n;
+        else if (tecla == KEY_DOWN) sel = (sel + 1) % n;
+        else if (tecla == 10) break;
+        else if (tecla == 27) return;
+    }
+    int turma_id = turmas[sel].id;
+
+    // === Carregar atividades da turma selecionada ===
+    caminho = encontrar_arquivo_json("atividades.json");
+    f = fopen(caminho, "r");
+    if (!f) return;
+    fseek(f, 0, SEEK_END); sz = ftell(f); fseek(f, 0, SEEK_SET);
+    buf = malloc(sz + 1); fread(buf, 1, sz, f); buf[sz] = 0; fclose(f);
+    root = cJSON_Parse(buf); free(buf);
+
+    typedef struct { int id; char desc[256]; } Atv;
+    Atv atividades[100]; int na = 0;
+    cJSON* array_atv = cJSON_GetObjectItem(root, "atividades");
+    cJSON* a;
+    cJSON_ArrayForEach(a, array_atv) {
+        cJSON* tid = cJSON_GetObjectItem(a, "turma_id");
+        cJSON* aid = cJSON_GetObjectItem(a, "atividade_id");
+        cJSON* desc = cJSON_GetObjectItem(a, "descricao");
+        if (tid && tid->valueint == turma_id && aid && desc && na < 100) {
+            atividades[na].id = aid->valueint;
+            strncpy(atividades[na].desc, desc->valuestring, 255);
+            na++;
+        }
+    }
+    cJSON_Delete(root);
+
+    if (na == 0) {
+        limparTela(); linha();
+        printw_utf8("Nenhuma atividade nesta turma.\n");
+        linha(); printw_utf8("Pressione qualquer tecla...\n"); getch();
+        return;
+    }
+
+    // === Menu de atividades ===
+    sel = 0;
+    while (1) {
+        limparTela(); linha();
+        printw_utf8("Selecione a Atividade\n");
+        linha();
+        for (int i = 0; i < na; i++) {
+            if (i == sel) { attron(COLOR_PAIR(1)); printw_utf8("> "); attroff(COLOR_PAIR(1)); }
+            else printw_utf8("  ");
+            printw_utf8("%d. %s (ID: %d)\n", i+1, atividades[i].desc, atividades[i].id);
+        }
+        linha(); printw_utf8("^v Navegar | ENTER Selecionar | ESC Cancelar\n"); refresh();
+
+        tecla = getch();
+        if (tecla == KEY_UP) sel = (sel - 1 + na) % na;
+        else if (tecla == KEY_DOWN) sel = (sel + 1) % na;
+        else if (tecla == 10) break;
+        else if (tecla == 27) return;
+    }
+    int atividade_id = atividades[sel].id;
+
+    // === CHAMA O PYTHON COM OS DOIS IDs JÁ VALIDADOS ===
+    endwin();
+    SetConsoleOutputCP(65001);
+
+    PyObject *pModule = PyImport_ImportModule("LoginProfessor");
+    if (pModule) {
+        PyObject *pFunc = PyObject_GetAttrString(pModule, "atribuir_notas_com_ids");
+        if (pFunc && PyCallable_Check(pFunc)) {
+            PyObject *pArgs = PyTuple_New(2);
+            PyTuple_SetItem(pArgs, 0, PyLong_FromLong(turma_id));
+            PyTuple_SetItem(pArgs, 1, PyLong_FromLong(atividade_id));
+            PyObject_CallObject(pFunc, pArgs);
+            Py_DECREF(pArgs);
+        }
+        Py_XDECREF(pFunc);
+        Py_DECREF(pModule);
+    }
+
+    initscr(); keypad(stdscr, TRUE); cbreak(); noecho(); reiniciar_cores();
+}
+
 void visualizador_interativo(const char* caminho_arquivo, const char* titulo) {
     FILE* fp = fopen(caminho_arquivo, "r");
     if (!fp) {
@@ -581,7 +762,7 @@ void visualizador_interativo(const char* caminho_arquivo, const char* titulo) {
         
         linha();
         if (total_paginas > 1) {
-            printw_utf8("← Anterior | → Próxima | ");
+            printw_utf8("< Anterior | > Próxima | ");
         }
         printw_utf8("A Abrir arquivo | ESC Voltar\n");
         linha();
@@ -604,7 +785,7 @@ void visualizador_interativo(const char* caminho_arquivo, const char* titulo) {
                 keypad(stdscr, TRUE);
                 cbreak();
                 noecho();
-                start_color();
+                reiniciar_cores();
                 init_pair(1, COLOR_GREEN, COLOR_BLACK);
                 init_pair(2, COLOR_RED, COLOR_BLACK);
                 break;
@@ -694,6 +875,69 @@ void exibir_enunciado_atividade(int atividade_id) {
     cJSON_Delete(root_ativ);
 }
 
+char* username_para_nome_completo(const char* username){
+    if (!username || username[0] == '\0') return NULL;
+
+    char* caminho = encontrar_arquivo_json("turmas.json");
+    FILE* f = fopen(caminho, "r");
+    if (!f) return NULL;
+
+    fseek(f, 0, SEEK_END);
+    long size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    char* buffer = malloc(size + 1);
+    if (!buffer) { fclose(f); return NULL; }
+
+    fread(buffer, 1, size, f);
+    buffer[size] = '\0';
+    fclose(f);
+
+    cJSON* root = cJSON_Parse(buffer);
+    free(buffer);
+    if (!root) return NULL;
+
+    char* nome_completo = NULL;
+
+    if (cJSON_HasObjectItem(root, "turmas")) {
+        cJSON* turmas = cJSON_GetObjectItem(root, "turmas");
+        cJSON* turma;
+        cJSON_ArrayForEach(turma, turmas) {
+            cJSON* prof_obj = cJSON_GetObjectItem(turma, "professor");
+            if (!prof_obj) continue;
+
+            cJSON* user = cJSON_GetObjectItem(prof_obj, "username");
+            cJSON* nome = cJSON_GetObjectItem(prof_obj, "nome");
+
+            if (user && user->valuestring && nome && nome->valuestring) {
+                if (strcmp(user->valuestring, username) == 0) {
+                    nome_completo = _strdup(nome->valuestring);
+                    break;
+                }
+            }
+        }
+    }
+
+    cJSON_Delete(root);
+    return nome_completo;  // pode ser NULL → caller deve verificar
+}
+
+void formatar_nome_proprio(char* str){
+    if (!str || str[0] == '\0') return;
+
+    int nova_palavra = 1;
+    for (int i = 0; str[i]; i++) {
+        if (str[i] == ' ') {
+            nova_palavra = 1;
+        } else if (nova_palavra) {
+            str[i] = toupper((unsigned char)str[i]);
+            nova_palavra = 0;
+        } else {
+            str[i] = tolower((unsigned char)str[i]);
+        }
+    }
+}
+
 // === FUNÇÃO MODIFICADA: Agora recebe turma_id ===
 int menu_responder_atividade(int atividade_id, int turma_id) {
     const char *opcoes[] = {"Responder Atividade", "Voltar ao Menu Anterior"};
@@ -739,12 +983,12 @@ int menu_responder_atividade(int atividade_id, int turma_id) {
                     linha();
                     printw_utf8("Responder Atividade ID: %d\n", atividade_id);
                     linha();
-                    printw_utf8("Digite o caminho do seu arquivo de resposta, sem aspas (TXT ou PDF):\n");
+                    printw_utf8("Digite o caminho do seu arquivo de resposta (TXT ou PDF):\n");
                     refresh();
                     echo();
                     getstr(caminho);
                     noecho();
-                    
+                    remover_aspas(caminho);
                     int resultado = enviar_arquivo(caminho, aluno_matricula_logado, atividade_id, turma_id);
                     if (resultado == 0) {
                         attron(COLOR_PAIR(1));
@@ -953,121 +1197,176 @@ void menu_atividades_aluno() {
     }
 }
 
+/* LISTAR SUBMISSÕES COM VISUALIZADOR INTERATIVO - VERSÃO FINAL */
 void listar_submissoes(int atividade_id) {
-    PyObject *pName = NULL, *pModule = NULL, *pFunc = NULL, *pArgs = NULL, *pValue = NULL;
-    PyObject *pStdout = NULL, *pStringIO = NULL;
-    PyObject *sys_module = NULL, *old_stdout = NULL;
-    char *output = NULL;
+    limparTela();
+    linha();
+    printw_utf8("Carregando submissões da atividade %d...\n", atividade_id);
+    refresh();
+    napms(500);
 
-    // === ADICIONA CAMINHO AO sys.path ===
-    const char* base = ROOT_PATH ? ROOT_PATH : "Z:\\python_embedded";
-    wchar_t w_base[MAX_PATH];
-    MultiByteToWideChar(CP_UTF8, 0, base, -1, w_base, MAX_PATH);
-
-    sys_module = PyImport_ImportModule("sys");
-    if (!sys_module) {
-        PyErr_Print();
-        goto show_error;
+    // === BUSCAR TURMA DA ATIVIDADE ===
+    char* caminho_ativ = encontrar_arquivo_json("atividades.json");
+    FILE* fp = fopen(caminho_ativ, "r");
+    if (!fp) {
+        attron(COLOR_PAIR(2)); printw_utf8("Erro: atividades.json não encontrado!\n"); attroff(COLOR_PAIR(2));
+        getch(); return;
     }
 
-    PyObject* sys_path = PyObject_GetAttrString(sys_module, "path");
-    if (!sys_path) goto show_error;
+    fseek(fp, 0, SEEK_END); long size = ftell(fp); fseek(fp, 0, SEEK_SET);
+    char* buffer = malloc(size + 1); fread(buffer, 1, size, fp); buffer[size] = '\0'; fclose(fp);
 
-    // Verifica se já está no path
-    int already_in_path = 0;
-    Py_ssize_t path_len = PyList_Size(sys_path);
-    for (Py_ssize_t i = 0; i < path_len; i++) {
-        PyObject* item = PyList_GetItem(sys_path, i);
-        const char* path_str = PyUnicode_AsUTF8(item);
-        if (path_str && _stricmp(path_str, base) == 0) {
-            already_in_path = 1;
+    cJSON* root = cJSON_Parse(buffer);
+    free(buffer);
+    if (!root) {
+        attron(COLOR_PAIR(2)); printw_utf8("Erro ao ler atividades.json\n"); attroff(COLOR_PAIR(2));
+        getch(); return;
+    }
+
+    int turma_id = -1;
+    cJSON* atividades = cJSON_GetObjectItem(root, "atividades");
+    cJSON* item = NULL;
+    cJSON_ArrayForEach(item, atividades) {
+        cJSON* id_obj = cJSON_GetObjectItem(item, "atividade_id");
+        if (cJSON_IsNumber(id_obj) && id_obj->valueint == atividade_id) {
+            cJSON* t = cJSON_GetObjectItem(item, "turma_id");
+            if (cJSON_IsNumber(t)) turma_id = t->valueint;
             break;
         }
     }
+    cJSON_Delete(root);
 
-    if (!already_in_path) {
-        PyList_Append(sys_path, PyUnicode_FromWideChar(w_base, -1));
+    if (turma_id == -1) {
+        attron(COLOR_PAIR(2)); printw_utf8("Atividade não encontrada!\n"); attroff(COLOR_PAIR(2));
+        getch(); return;
     }
 
-    // === REDIRECIONA STDOUT ===
-    pStdout = PyImport_ImportModule("io");
-    if (!pStdout) goto show_error;
+    char* nome_turma = obter_nome_turma_por_id(turma_id);
+    const char* base = ROOT_PATH ? ROOT_PATH : "Z:\\python_embedded";
+    char pasta_base[512];
+    snprintf(pasta_base, sizeof(pasta_base), "%s\\submissoes\\%s", base, nome_turma);
 
-    pStringIO = PyObject_CallMethod(pStdout, "StringIO", NULL);
-    if (!pStringIO) goto show_error;
+    // === COLETAR TODAS AS SUBMISSÕES ===
+    typedef struct {
+        char matricula[32];
+        char caminho_arquivo[512];
+        char data_envio[20];
+        char nome_arquivo[256];
+    } Submissao;
 
-    old_stdout = PyObject_GetAttrString(sys_module, "stdout");
-    PyObject_SetAttrString(sys_module, "stdout", pStringIO);
+    Submissao subs[200];
+    int total = 0;
 
-    // === IMPORTA MÓDULO ===
-    pName = PyUnicode_FromString("listarsubmissoes");
-    pModule = PyImport_Import(pName);
-    if (!pModule) {
-        PyErr_Print();
-        goto cleanup;
+    WIN32_FIND_DATAA fd;
+    char busca_alunos[512];
+    snprintf(busca_alunos, sizeof(busca_alunos), "%s\\*", pasta_base);
+    HANDLE hFind = FindFirstFileA(busca_alunos, &fd);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        limparTela(); linha();
+        printw_utf8("Nenhuma submissão encontrada para esta atividade.\n");
+        linha(); printw_utf8("Pressione qualquer tecla...\n"); getch();
+        return;
     }
 
-    pFunc = PyObject_GetAttrString(pModule, "listar_submissoes");
-    if (!pFunc || !PyCallable_Check(pFunc)) {
-        goto cleanup;
-    }
+    do {
+        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) || strcmp(fd.cFileName, ".") == 0 || strcmp(fd.cFileName, "..") == 0)
+            continue;
 
-    pArgs = PyTuple_Pack(1, PyLong_FromLong(atividade_id));
-    pValue = PyObject_CallObject(pFunc, pArgs);
-    if (!pValue) {
-        PyErr_Print();
-        goto cleanup;
-    }
-    Py_DECREF(pValue);
+        char pasta_aluno_ativ[512];
+        snprintf(pasta_aluno_ativ, sizeof(pasta_aluno_ativ), "%s\\%s\\%d", pasta_base, fd.cFileName, atividade_id);
 
-    // === CAPTURA SAÍDA ===
-    PyObject* pGetValue = PyObject_CallMethod(pStringIO, "getvalue", NULL);
-    if (pGetValue) {
-        output = _strdup(PyUnicode_AsUTF8(pGetValue));
-        Py_DECREF(pGetValue);
-    }
+        if (_access(pasta_aluno_ativ, 0) != 0) continue;
 
-cleanup:
-    // Restaura stdout
-    if (sys_module && old_stdout) {
-        PyObject_SetAttrString(sys_module, "stdout", old_stdout);
-    }
+        char busca_arquivos[512];
+        snprintf(busca_arquivos, sizeof(busca_arquivos), "%s\\*", pasta_aluno_ativ);
+        WIN32_FIND_DATAA fd2;
+        HANDLE h2 = FindFirstFileA(busca_arquivos, &fd2);
 
-    Py_XDECREF(pFunc);
-    Py_XDECREF(pModule);
-    Py_XDECREF(pStringIO);
-    Py_XDECREF(pStdout);
-    Py_XDECREF(sys_module);
-    Py_XDECREF(old_stdout);
-    Py_XDECREF(pArgs);
-    Py_XDECREF(pName);
+        if (h2 == INVALID_HANDLE_VALUE) continue;
 
-    // === EXIBE RESULTADO ===
-    limparTela();
-    linha();
-    printw_utf8("Submissões da Atividade %d\n", atividade_id);
-    linha();
+        do {
+            if (fd2.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) continue;
 
-    if (output && strlen(output) > 0) {
-        printw_utf8("%s", output);
-    } else {
+            if (total >= 200) break;
+
+            strncpy(subs[total].matricula, fd.cFileName, 31);
+            snprintf(subs[total].caminho_arquivo, sizeof(subs[total].caminho_arquivo), "%s\\%s", pasta_aluno_ativ, fd2.cFileName);
+            strncpy(subs[total].nome_arquivo, fd2.cFileName, 255);
+
+            // Extrair data do nome do arquivo
+            char* p = strstr(fd2.cFileName, "resposta_");
+            if (p) {
+                p += 9;
+                snprintf(subs[total].data_envio, 20, "%c%c/%c%c/%c%c %c%c:%c%c",
+                         p[6], p[7], p[4], p[5], p[0], p[1], p[2], p[3], p[8], p[9], p[10], p[11]);
+            } else {
+                strcpy(subs[total].data_envio, "Desconhecida");
+            }
+            total++;
+        } while (FindNextFileA(h2, &fd2));
+        FindClose(h2);
+    } while (FindNextFileA(hFind, &fd));
+    FindClose(hFind);
+
+    if (total == 0) {
+        limparTela(); linha();
         printw_utf8("Nenhuma submissão encontrada.\n");
+        linha(); printw_utf8("Pressione qualquer tecla...\n"); getch();
+        return;
     }
 
-    free(output);
-    linha();
-    printw_utf8("Pressione qualquer tecla para continuar...\n");
-    refresh();
-    getch();
-    return;
+    // === MENU INTERATIVO DE SUBMISSÕES ===
+    int selecionado = 0;
+    int tecla;
 
-show_error:
-    limparTela();
-    linha();
-    printw_utf8("ERRO CRÍTICO: Python não inicializado corretamente.\n");
-    linha();
-    refresh();
-    getch();
+    while (1) {
+        limparTela();
+        linha();
+        printw_utf8("Submissões da Atividade %d - Turma: %s\n", atividade_id, nome_turma);
+        linha();
+        printw_utf8(" Matrícula      | Data/Hora        | Arquivo\n");
+        linha();
+
+        for (int i = 0; i < total; i++) {
+            if (i == selecionado) attron(COLOR_PAIR(1));
+            printw_utf8("%s %-14s | %-16s | %s\n",
+                       i == selecionado ? "> " : "  ",
+                       subs[i].matricula, subs[i].data_envio, subs[i].nome_arquivo);
+            if (i == selecionado) attroff(COLOR_PAIR(1));
+        }
+
+        linha();
+        printw_utf8("^v Navegar | ENTER Abrir arquivo | ESC Voltar\n");
+        refresh();
+
+        tecla = getch();
+        if (tecla == KEY_UP)   selecionado = (selecionado - 1 + total) % total;
+        if (tecla == KEY_DOWN) selecionado = (selecionado + 1) % total;
+        if (tecla == 27) return; // ESC
+        if (tecla == 10) { // ENTER
+            limparTela();
+            linha();
+            printw_utf8("Visualizando: %s\n", subs[selecionado].nome_arquivo);
+            printw_utf8("Aluno: %s\n", subs[selecionado].matricula);
+            linha();
+
+            // === ABRIR ARQUIVO (PDF ou TXT) ===
+            char* ext = strrchr(subs[selecionado].nome_arquivo, '.');
+            if (ext && (_stricmp(ext, ".pdf") == 0 || _stricmp(ext, ".txt") == 0)) {
+                ShellExecuteA(NULL, "open", subs[selecionado].caminho_arquivo, NULL, NULL, SW_SHOWNORMAL);
+                printw_utf8("Arquivo aberto no visualizador padrão!\n");
+            } else {
+                attron(COLOR_PAIR(2));
+                printw_utf8("Formato não suportado para visualização.\n");
+                attroff(COLOR_PAIR(2));
+            }
+
+            linha();
+            printw_utf8("Pressione qualquer tecla para voltar à lista...\n");
+            getch();
+        }
+    }
 }
 
 void ver_anuncios(void) {
@@ -1076,18 +1375,19 @@ void ver_anuncios(void) {
     printw_utf8("=== Anúncios ===\n");
     linha();
 
-    // --- 1. Carregar turmas.json para mapear aluno -> professores ---
+    // --- 1. Coletar usernames dos professores que o aluno tem ---
+    char* professores_permitidos[32] = {0};
+    int num_professores = 0;
+
     char* caminho_turmas = encontrar_arquivo_json("turmas.json");
     FILE* ft = fopen(caminho_turmas, "r");
     cJSON* turmas_root = NULL;
-    char* professores_permitidos[32] = {0};
-    int num_professores = 0;
 
     if (ft) {
         fseek(ft, 0, SEEK_END);
         long size = ftell(ft);
         fseek(ft, 0, SEEK_SET);
-        char* buffer = (char*)malloc(size + 1);
+        char* buffer = malloc(size + 1);
         if (buffer) {
             fread(buffer, 1, size, ft);
             buffer[size] = '\0';
@@ -1104,56 +1404,52 @@ void ver_anuncios(void) {
             cJSON* alunos = cJSON_GetObjectItem(turma, "alunos");
             if (!alunos) continue;
 
+            int aluno_na_turma = 0;
             cJSON* aluno;
             cJSON_ArrayForEach(aluno, alunos) {
                 cJSON* mat = cJSON_GetObjectItem(aluno, "matricula");
                 if (mat && strcmp(mat->valuestring, aluno_matricula_logado) == 0) {
-                    cJSON* prof = cJSON_GetObjectItem(turma, "professor");
-                    if (prof) {
-                        cJSON* username = cJSON_GetObjectItem(prof, "username");
-                        if (username && username->valuestring && num_professores < 32) {
-                            int duplicado = 0;
-                            for (int i = 0; i < num_professores; i++) {
-                                if (strcmp(professores_permitidos[i], username->valuestring) == 0) {
-                                    duplicado = 1;
-                                    break;
-                                }
-                            }
-                            if (!duplicado) {
-                                professores_permitidos[num_professores++] = username->valuestring;
-                            }
+                    aluno_na_turma = 1;
+                    break;
+                }
+            }
+            if (!aluno_na_turma) continue;
+
+            cJSON* prof = cJSON_GetObjectItem(turma, "professor");
+            if (prof) {
+                cJSON* username = cJSON_GetObjectItem(prof, "username");
+                if (username && username->valuestring && num_professores < 32) {
+                    int duplicado = 0;
+                    for (int i = 0; i < num_professores; i++) {
+                        if (strcmp(professores_permitidos[i], username->valuestring) == 0) {
+                            duplicado = 1;
+                            break;
                         }
                     }
-                    break;
+                    if (!duplicado) {
+                        professores_permitidos[num_professores++] = _strdup(username->valuestring);
+                    }
                 }
             }
         }
     }
 
-    // --- 2. Carregar e filtrar anuncios.json ---
-    char* caminho = encontrar_arquivo_json("anuncios.json");
-    FILE* f = fopen(caminho, "r");
+    // --- 2. Carregar anúncios ---
+    char* caminho_anuncios = encontrar_arquivo_json("anuncios.json");
+    FILE* f = fopen(caminho_anuncios, "r");
     if (!f) {
         printw_utf8("Nenhum anúncio disponível.\n");
-        if (turmas_root) cJSON_Delete(turmas_root);
-        linha();
-        printw_utf8("Pressione qualquer tecla para voltar...\n");
-        getch();
-        return;
+        goto limpar_memoria;
     }
 
     fseek(f, 0, SEEK_END);
     long size = ftell(f);
     fseek(f, 0, SEEK_SET);
-    char* buffer = (char*)malloc(size + 1);
+    char* buffer = malloc(size + 1);
     if (!buffer) {
         fclose(f);
-        if (turmas_root) cJSON_Delete(turmas_root);
         printw_utf8("Erro de memória.\n");
-        linha();
-        printw_utf8("Pressione qualquer tecla...\n");
-        getch();
-        return;
+        goto limpar_memoria;
     }
 
     fread(buffer, 1, size, f);
@@ -1166,152 +1462,60 @@ void ver_anuncios(void) {
     if (!root || !cJSON_HasObjectItem(root, "anuncios")) {
         printw_utf8("Nenhum anúncio disponível.\n");
         if (root) cJSON_Delete(root);
-        if (turmas_root) cJSON_Delete(turmas_root);
-        linha();
-        printw_utf8("Pressione qualquer tecla para voltar...\n");
-        getch();
-        return;
+        goto limpar_memoria;
     }
 
+    int count = 0;
     cJSON* anuncios = cJSON_GetObjectItem(root, "anuncios");
     cJSON* anuncio;
-    int count = 0;
 
-    char* nomes_professores[32] = {0};
-    num_professores = 0;
-
-    if (turmas_root) {
-        cJSON* turmas = cJSON_GetObjectItem(turmas_root, "turmas");
-        cJSON* turma;
-        cJSON_ArrayForEach(turma, turmas) {
-            cJSON* alunos = cJSON_GetObjectItem(turma, "alunos");
-            if (!alunos) continue;
-
-            int aluno_encontrado = 0;
-            cJSON* aluno;
-            cJSON_ArrayForEach(aluno, alunos) {
-                cJSON* mat = cJSON_GetObjectItem(aluno, "matricula");
-                if (mat && strcmp(mat->valuestring, aluno_matricula_logado) == 0) {
-                    aluno_encontrado = 1;
-                    break;
-                }
-            }
-            if (!aluno_encontrado) continue;
-
-            cJSON* prof = cJSON_GetObjectItem(turma, "professor");
-            if (prof) {
-                cJSON* nome_prof = cJSON_GetObjectItem(prof, "nome");
-                if (nome_prof && nome_prof->valuestring && num_professores < 32) {
-                    int duplicado = 0;
-                    for (int i = 0; i < num_professores; i++) {
-                        if (strcmp(nomes_professores[i], nome_prof->valuestring) == 0) {
-                            duplicado = 1;
-                            break;
-                        }
-                    }
-                    if (!duplicado) {
-                        nomes_professores[num_professores++] = _strdup(nome_prof->valuestring);
-                    }
-                }
-            }
-        }
-    }
-
-    count = 0;
     cJSON_ArrayForEach(anuncio, anuncios) {
         cJSON* data = cJSON_GetObjectItem(anuncio, "data");
-        cJSON* prof_nome = cJSON_GetObjectItem(anuncio, "professor");
+        cJSON* username_prof = cJSON_GetObjectItem(anuncio, "professor");  // agora é username
         cJSON* msg = cJSON_GetObjectItem(anuncio, "mensagem");
 
-        if (!data || !prof_nome || !msg) continue;
+        if (!data || !username_prof || !msg) continue;
 
+        // Verifica permissão
         int permitido = 0;
         for (int i = 0; i < num_professores; i++) {
-            if (strcmp(nomes_professores[i], prof_nome->valuestring) == 0) {
+            if (strcmp(professores_permitidos[i], username_prof->valuestring) == 0) {
                 permitido = 1;
                 break;
             }
         }
+        if (!permitido) continue;
 
-        if (permitido) {
-            count++;
-            printw_utf8("[%s] %s:\n", data->valuestring, prof_nome->valuestring);
-            printw_utf8("  %s\n\n", msg->valuestring);
+        // Converte username → nome completo bonito
+        char* nome_completo = username_para_nome_completo(username_prof->valuestring);
+        char nome_exibir[128];
+        if (nome_completo) {
+            strcpy(nome_exibir, nome_completo);
+            free(nome_completo);
+        } else {
+            strncpy(nome_exibir, username_prof->valuestring, sizeof(nome_exibir)-1);
+            nome_exibir[sizeof(nome_exibir)-1] = '\0';
         }
+        formatar_nome_proprio(nome_exibir);
+
+        printw_utf8("[%s] %s:\n", data->valuestring, nome_exibir);
+        printw_utf8(" %s\n\n", msg->valuestring);
+        count++;
     }
 
     if (count == 0) {
         printw_utf8("Nenhum anúncio disponível para suas turmas.\n");
     }
 
-    for (int i = 0; i < num_professores; i++) {
-        free(nomes_professores[i]);
-    }
     cJSON_Delete(root);
+
+limpar_memoria:
+    for (int i = 0; i < num_professores; i++) {
+        free(professores_permitidos[i]);
+    }
     if (turmas_root) cJSON_Delete(turmas_root);
 
     linha();
     printw_utf8("Pressione qualquer tecla para voltar...\n");
     getch();
-}
-
-void menu_atividades_professor() {
-    const char *opcoes[] = {"Criar Atividade", "Ver Submissões", "Voltar"};
-    int num_opcoes = 3;
-    int selecionado = 0;
-    int tecla;
-
-    while (1) {
-        limparTela();
-        linha();
-        printw_utf8("Menu de Atividades - Professor\n");
-        linha();
-        for (int i = 0; i < num_opcoes; i++) {
-            if (i == selecionado) {
-                attron(COLOR_PAIR(1));
-                printw_utf8("> %s\n", opcoes[i]);
-                attroff(COLOR_PAIR(1));
-            } else {
-                printw_utf8("  %s\n", opcoes[i]);
-            }
-        }
-        linha();
-        refresh();
-
-        tecla = getch();
-        switch (tecla) {
-            case KEY_UP: selecionado = (selecionado - 1 + num_opcoes) % num_opcoes; break;
-            case KEY_DOWN: selecionado = (selecionado + 1) % num_opcoes; break;
-            case 10:
-                if (selecionado == 0) {
-                    menu_criar_atividade();
-                } else if (selecionado == 1) {
-                    limparTela();
-                    int atividade_id;
-                    linha();
-                    printw_utf8("Ver Submissões\n");
-                    linha();
-                    printw_utf8("Digite o ID da atividade:\n");
-                    refresh();
-                    echo();
-                    if (scanw("%d", &atividade_id) != 1) {
-                        noecho();
-                        attron(COLOR_PAIR(2));
-                        printw_utf8("Entrada inválida!\n");
-                        attroff(COLOR_PAIR(2));
-                        napms(1500);
-                        continue;
-                    }
-                    noecho();
-                    listar_submissoes(atividade_id);
-                    printw_utf8("\nPressione qualquer tecla para continuar...\n");
-                    refresh();
-                    getch();
-                } else if (selecionado == 2) {
-                    return;
-                }
-                break;
-            default: break;
-        }
-    }
 }

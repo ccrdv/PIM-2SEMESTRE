@@ -296,6 +296,7 @@ void menuLogadoAluno() {
     int selecionado = 0;
     int tecla;
 	init_pair(7, COLOR_MAGENTA, COLOR_BLACK);
+	init_pair(1, COLOR_GREEN, COLOR_BLACK);
     while (1) {
         limparTela();
         linha();

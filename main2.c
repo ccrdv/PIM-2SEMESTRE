@@ -23,6 +23,8 @@ void linha() {
     refresh();
 }
 
+char* ROOT_PATH = NULL;
+
 /* Converte e exibe uma string UTF-8 corretamente no PDCurses (Windows) */
 void printw_utf8(const char* str) {
     int wide_len = MultiByteToWideChar(CP_UTF8, 0, str, -1, NULL, 0);
@@ -92,12 +94,26 @@ void garantir_arquivos_json() {
         "import os, json\n"
         "dir = r'Z:\\python_embedded'\n"
         "os.makedirs(dir, exist_ok=True)\n"
-        "arquivos = ['users.json','turmas.json','alunos.json','matriculas.json','atividades.json','anuncios.json']\n"
-        "for a in arquivos:\n"
-        " caminho = os.path.join(dir, a)\n"
-        " if not os.path.exists(caminho):\n"
-        " data = {'users':[]} if a=='users.json' else {'turmas':[]} if a=='turmas.json' else {'atividades':[]} if a=='atividades.json' else {'anuncios':[]} if a=='anuncios.json' else {}\n"
-        " with open(caminho,'w',encoding='utf-8') as f: json.dump(data,f,indent=4,ensure_ascii=False)\n"
+        "\n"
+        "# Estrutura padrão para cada arquivo JSON\n"
+        "estruturas = {\n"
+        "    'users.json':     {'users': []},\n"
+        "    'turmas.json':    {'turmas': []},\n"
+        "    'matriculas.json':{},\n"
+        "    'alunos.json':    {},\n"
+        "    'atividades.json':{'atividades': []},\n"
+        "    'presencas.json': {'presencas': []},\n"
+        "    'notas.json':     {'notas': []},\n"
+        "    'anuncios.json':  {'anuncios': []},\n"
+        "    'logs.json':      {'atividades': []}\n"
+        "}\n"
+        "\n"
+        "for arquivo, estrutura in estruturas.items():\n"
+        "    caminho = os.path.join(dir, arquivo)\n"
+        "    if not os.path.exists(caminho):\n"
+        "        print(f'[Sistema] Criando {arquivo}...')\n"
+        "        with open(caminho, 'w', encoding='utf-8') as f:\n"
+        "            json.dump(estrutura, f, indent=4, ensure_ascii=False)\n"
     );
 }
 
@@ -133,6 +149,43 @@ int init_python_portable() {
 erro:
     PyConfig_Clear(&config);
     return 0;
+}
+
+void abrirManual(void) {
+    const char* base_dir = ROOT_PATH ? ROOT_PATH : "Z:\\python_embedded";
+    
+    // Primeiro tenta no diretório do executável (instalado pelo Inno Setup)
+    char caminho_exe_dir[512];
+    GetModuleFileNameA(NULL, caminho_exe_dir, sizeof(caminho_exe_dir));
+    char* ultima_barra = strrchr(caminho_exe_dir, '\\');
+    if (ultima_barra) *ultima_barra = '\0';  // remove o nome do .exe
+    strcat(caminho_exe_dir, "\\Manual.pdf");
+
+    // Se existir no diretório do instalador → abre
+    if (_access(caminho_exe_dir, 0) == 0) {
+        ShellExecuteA(NULL, "open", caminho_exe_dir, NULL, NULL, SW_SHOWNORMAL);
+        return;
+    }
+
+    // Caso contrário, tenta no Z:\python_embedded (modo portátil)
+    char caminho_z[512];
+    snprintf(caminho_z, sizeof(caminho_z), "%s\\Manual.pdf", base_dir);
+
+    if (_access(caminho_z, 0) == 0) {
+        ShellExecuteA(NULL, "open", caminho_z, NULL, NULL, SW_SHOWNORMAL);
+        return;
+    }
+
+    // Se não encontrar em lugar nenhum
+    limparTela();
+    linha();
+    attron(COLOR_PAIR(2));
+    printw_utf8("Manual do usuário não encontrado!\n");
+    printw_utf8("Verifique se o arquivo 'Manual.pdf' está na pasta do programa.\n");
+    attroff(COLOR_PAIR(2));
+    linha();
+    printw_utf8("Pressione qualquer tecla para continuar...\n");
+    getch();
 }
 
 /* Executa o processo completo de login chamando a função login() do módulo Python ADM */
@@ -242,8 +295,8 @@ int rodarPythonLogin() {
 
 /* Exibe o menu principal com navegação por setas e seleção com Enter */
 void menuPrincipal() {
-    const char *opcoes[] = {"Login", "Sair"};
-    int num_opcoes = 2, selecionado = 0, tecla;
+    const char *opcoes[] = {"Login", "Manual", "Sobre", "Sair"};
+    int num_opcoes = 4, selecionado = 0, tecla;
     while (1) {
         limparTela(); linha();
         print_banner();
@@ -253,7 +306,7 @@ void menuPrincipal() {
                 printw("> %s\n", opcoes[i]);
                 attroff(COLOR_PAIR(1));
             } else {
-                printw(" %s\n", opcoes[i]);
+                printw("  %s\n", opcoes[i]);
             }
         }
         linha(); refresh();
@@ -269,7 +322,11 @@ void menuPrincipal() {
                 if (selecionado == 0) {
                     limparTela();
                     rodarPythonLogin();
-                } else if (selecionado == 1) {
+                } else if (selecionado == 1){
+                	abrirManual();
+				} else if(selecionado == 2){
+					sobre();
+				} else if (selecionado == 3) {
                     limparTela(); linha();
                     attron(COLOR_PAIR(2));
                     printw("Saindo....\n");
@@ -280,6 +337,33 @@ void menuPrincipal() {
                 break;
         }
     }
+}
+
+void sobre() {
+    limparTela();
+    linha();
+    attron(COLOR_PAIR(1));
+    printw("Equipe:\n");
+    attroff(COLOR_PAIR(1));
+    linha();
+    attron(COLOR_PAIR(1));
+    printw("Gabriel Kubota Marcheti\n");
+    printw("Guilherme Augusto Bernardino\n");
+    printw("Luis Felipe Siqueira Morro\n");
+    printw("Matheus Freitas Fernandes\n");
+    printw("Yasmin Gabrielly de Oliveira Francisco\n");
+    attroff(COLOR_PAIR(1));
+    linha();
+    attron(COLOR_PAIR(1));
+    printw("Projeto Integrado Multidisciplinar 1 e 2 semestre - ADS Unip\n");
+    attroff(COLOR_PAIR(1));
+    linha();
+    
+    printw("\n\n     Aperte qualquer tecla para voltar...");
+    
+    refresh();
+    getch();           // Espera pressionar qualquer tecla
+    menuPrincipal();   // Volta direto pro menu principal
 }
 
 /* Função principal: inicia Python, garante arquivos JSON, inicia ncurses e abre o menu */

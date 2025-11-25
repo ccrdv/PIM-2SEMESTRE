@@ -1,4 +1,3 @@
-// MenuProf.c
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,10 +12,10 @@
 #include "cJSON.h"
 #include "utils.h"
 
-// === GLOBALS ===
+
 extern char* nome_professor_logado;
 
-// === UTF-8 CONVERSION ===
+
 char* cp_to_utf8(const char* src) {
     if (!src || !*src) return strdup("");
     int wide_len = MultiByteToWideChar(CP_ACP, 0, src, -1, NULL, 0);
@@ -73,7 +72,7 @@ void print_banner_prof(){
     }
 }
 
-// === PYTHON CALL HELPER ===
+
 static int call_professor_func(const char* func_name, const char* username) {
     endwin();
     SetConsoleOutputCP(CP_UTF8);
@@ -102,8 +101,7 @@ cleanup:
 
     initscr();
     keypad(stdscr, TRUE);
-    cbreak(); noecho();
-    start_color();
+    cbreak(); noecho(); reiniciar_cores();
     init_pair(1, COLOR_GREEN, COLOR_BLACK);
     init_pair(2, COLOR_RED, COLOR_BLACK);
     return ok;
@@ -117,7 +115,7 @@ int python_atribuir_notas(const char* username) {
     return call_professor_func("atribuir_notas", username);
 }
 
-// === POST ANNOUNCEMENT ===
+
 int postar_anuncio(const char* mensagem) {
     const char* prof_nome = nome_professor_logado ? nome_professor_logado : "Professor";
     char* caminho_anuncios = encontrar_arquivo_json("anuncios.json");
@@ -167,98 +165,180 @@ int postar_anuncio(const char* mensagem) {
     return 0;
 }
 
-// === MENU DE ATIVIDADES (EMBUTIDO) ===
-static void menu_atividades_professor() {
-    const char* opcoes[] = {"Criar Atividade", "Ver Submissões", "Voltar"};
-    int num_opcoes = 3;
-    int selecionado = 0;
-    int tecla;
-
+/* MENU DE ATIVIDADES DO PROFESSOR - VERSÃO INTERATIVA E PROFISSIONAL */
+void menu_atividades_professor() {
     while (1) {
-        limparTela();
-        linha();
-        printw_utf8("Menu de Atividades - Professor\n");
-        linha();
-        for (int i = 0; i < num_opcoes; i++) {
-            if (i == selecionado) {
-                attron(COLOR_PAIR(1));
-                printw_utf8("> %s\n", opcoes[i]);
-                attroff(COLOR_PAIR(1));
-            } else {
-                printw_utf8("  %s\n", opcoes[i]);
-            }
-        }
-        linha();
-        refresh();
+        // === MENU PRINCIPAL ===
+        const char* opcoes[] = {"Criar Atividade", "Ver Submissões", "Voltar"};
+        int num_opcoes = 3;
+        int selecionado = 0;
+        int tecla;
 
-        tecla = getch();
-        switch (tecla) {
-            case KEY_UP:  selecionado = (selecionado - 1 + num_opcoes) % num_opcoes; break;
-            case KEY_DOWN:selecionado = (selecionado + 1) % num_opcoes; break;
-            case 10:
-                if (selecionado == 0) {
-                    // === CRIAR ATIVIDADE ===
-                    limparTela();
-                    linha();
-                    printw_utf8("Criar Nova Atividade\n");
-                    linha();
+        while (1) {
+            limparTela();
+            linha();
+            printw_utf8("Menu de Atividades - Professor\n");
+            linha();
 
-                    char caminho[512], desc[512];
-                    printw_utf8("Caminho do enunciado, sem aspas (.txt): ");
-                    echo(); getnstr(caminho, 510); noecho();
-                    printw_utf8("Descrição (opcional): ");
-                    echo(); getnstr(desc, 510); noecho();
-
-                    int turma_id = 1; // Hardcoded for now
-                    int result = criar_atividade(caminho, desc, turma_id);
-                    if (result == 0) {
-                        attron(COLOR_PAIR(1));
-                        printw_utf8("Atividade criada com sucesso!\n");
-                        attroff(COLOR_PAIR(1));
-                    } else {
-                        attron(COLOR_PAIR(2));
-                        printw_utf8("Erro ao criar atividade (código: %d)\n", result);
-                        attroff(COLOR_PAIR(2));
-                    }
-                    refresh(); getch();
-
-                } else if (selecionado == 1) {
-                    // === VER SUBMISSÕES ===
-                    limparTela();
-                    linha();
-                    printw_utf8("Ver Submissões\n");
-                    linha();
-                    printw_utf8("ID da atividade: ");
-                    int id;
-                    echo();
-                    if (scanw("%d", &id) != 1) {
-                        noecho();
-                        attron(COLOR_PAIR(2));
-                        printw_utf8("Entrada inválida!\n");
-                        attroff(COLOR_PAIR(2));
-                        napms(1500);
-                        continue;
-                    }
-                    noecho();
-                    listar_submissoes(id);
-                    printw_utf8("Pressione qualquer tecla...\n");
-                    getch();
-                } else if (selecionado == 2) {
-                    return;
+            for (int i = 0; i < num_opcoes; i++) {
+                if (i == selecionado) {
+                    attron(COLOR_PAIR(1));
+                    printw_utf8("> %s\n", opcoes[i]);
+                    attroff(COLOR_PAIR(1));
+                } else {
+                    printw_utf8("  %s\n", opcoes[i]);
                 }
+            }
+            linha();
+            printw_utf8("^v Navegar | ENTER Selecionar | ESC Voltar\n");
+            refresh();
+
+            tecla = getch();
+            if (tecla == KEY_UP)   selecionado = (selecionado - 1 + num_opcoes) % num_opcoes;
+            if (tecla == KEY_DOWN) selecionado = (selecionado + 1) % num_opcoes;
+            if (tecla == 27) return; // ESC
+            if (tecla == 10) break;
+        }
+
+        // === AÇÕES ===
+        if (selecionado == 0) {
+            menu_criar_atividade();  // ← chama do arquivos.c (com seleção de turma!)
+            continue;
+        }
+        if (selecionado == 2) {
+            return; // Voltar
+        }
+
+        // === VER SUBMISSÕES - LISTA INTERATIVA ===
+        char* caminho = encontrar_arquivo_json("atividades.json");
+        FILE* fp = fopen(caminho, "r");
+        if (!fp) {
+            limparTela();
+            linha();
+            attron(COLOR_PAIR(2));
+            printw_utf8("Erro: atividades.json não encontrado!\n");
+            attroff(COLOR_PAIR(2));
+            linha();
+            printw_utf8("Pressione qualquer tecla...\n");
+            getch();
+            continue;
+        }
+
+        fseek(fp, 0, SEEK_END);
+        long size = ftell(fp);
+        fseek(fp, 0, SEEK_SET);
+        char* buffer = malloc(size + 1);
+        fread(buffer, 1, size, fp);
+        buffer[size] = '\0';
+        fclose(fp);
+
+        cJSON* root = cJSON_Parse(buffer);
+        free(buffer);
+        if (!root) {
+            limparTela();
+            attron(COLOR_PAIR(2));
+            printw_utf8("Erro ao ler atividades.json\n");
+            attroff(COLOR_PAIR(2));
+            getch();
+            continue;
+        }
+
+        typedef struct {
+            int id;
+            int turma_id;
+            char descricao[256];
+            int submissoes;
+        } Ativ;
+
+        Ativ lista[100];
+        int total = 0;
+
+        cJSON* array = cJSON_GetObjectItem(root, "atividades");
+        cJSON* item = NULL;
+        cJSON_ArrayForEach(item, array) {
+            cJSON* id_obj = cJSON_GetObjectItem(item, "atividade_id");
+            cJSON* turma_obj = cJSON_GetObjectItem(item, "turma_id");
+            cJSON* desc_obj = cJSON_GetObjectItem(item, "descricao");
+            cJSON* subs = cJSON_GetObjectItem(item, "submissoes");
+
+            if (!id_obj || !turma_obj) continue;
+
+            char* nome_turma = obter_nome_turma_por_id(turma_obj->valueint);
+            if (strstr(nome_turma, "Desconhecida") != NULL) continue; // não é dele
+
+            if (total >= 100) break;
+
+            lista[total].id = id_obj->valueint;
+            lista[total].turma_id = turma_obj->valueint;
+            strncpy(lista[total].descricao,
+                    desc_obj && cJSON_IsString(desc_obj) ? desc_obj->valuestring : "Sem descrição", 255);
+            lista[total].submissoes = cJSON_GetArraySize(subs);
+            total++;
+        }
+        cJSON_Delete(root);
+
+        if (total == 0) {
+            limparTela();
+            linha();
+            printw_utf8("Você ainda não criou nenhuma atividade.\n");
+            linha();
+            printw_utf8("Pressione qualquer tecla para voltar...\n");
+            getch();
+            continue;
+        }
+
+        // === SELEÇÃO DA ATIVIDADE ===
+        int sel = 0;
+        while (1) {
+            limparTela();
+            linha();
+            printw_utf8("Suas Atividades (Selecione para ver submissões)\n");
+            linha();
+            printw_utf8(" ID  | Turma                   | Subs | Descrição\n");
+            linha();
+
+            for (int i = 0; i < total; i++) {
+                char* turma = obter_nome_turma_por_id(lista[i].turma_id);
+                if (i == sel) attron(COLOR_PAIR(1));
+                printw_utf8("%s%3d | %-23s | %4d | %s\n",
+                           i == sel ? "> " : "  ",
+                           lista[i].id, turma, lista[i].submissoes, lista[i].descricao);
+                if (i == sel) attroff(COLOR_PAIR(1));
+            }
+
+            linha();
+            printw_utf8("^v Navegar | ENTER Ver submissões | ESC Voltar\n");
+            refresh();
+
+            tecla = getch();
+            if (tecla == KEY_UP)   sel = (sel - 1 + total) % total;
+            if (tecla == KEY_DOWN) sel = (sel + 1) % total;
+            if (tecla == 27) break;
+            if (tecla == 10) {
+                limparTela();
+                linha();
+                char* turma_nome = obter_nome_turma_por_id(lista[sel].turma_id);
+                printw_utf8("Submissões - Atividade ID: %d\n", lista[sel].id);
+                printw_utf8("Turma: %s\n", turma_nome);
+                printw_utf8("Descrição: %s\n", lista[sel].descricao);
+                linha();
+
+                listar_submissoes(lista[sel].id);
+
+                linha();
+                printw_utf8("Pressione qualquer tecla para voltar...\n");
+                getch();
                 break;
-            default: break;
+            }
         }
     }
 }
-
-// === MAIN PROFESSOR MENU ===
 void menuLogadoProf() {
     const char* opcoes[] = {"Menu de Atividades", "Postar Anúncio", "Registrar Presença", "Atribuir Nota", "Sair"};
     int num_opcoes = 5;
     int selecionado = 0;
     int tecla;
-
+	init_pair(1, COLOR_GREEN, COLOR_BLACK);
     while (1) {
         limparTela();
         linha();
@@ -310,8 +390,7 @@ void menuLogadoProf() {
                     if (nome_professor_logado) python_registrar_presenca(nome_professor_logado);
                     else { attron(COLOR_PAIR(2)); printw_utf8("Professor não logado.\n"); attroff(COLOR_PAIR(2)); getch(); }
                 } else if (selecionado == 3) {
-                    if (nome_professor_logado) python_atribuir_notas(nome_professor_logado);
-                    else { attron(COLOR_PAIR(2)); printw_utf8("Professor não logado.\n"); attroff(COLOR_PAIR(2)); getch(); }
+                    atribuir_notas_interativo();
                 } else if (selecionado == 4) {
                     limparTela(); return;
                 }

@@ -8,6 +8,7 @@
 #include "MenuAdm.h"
 #include "MenuSec.h"
 
+
 #define MAX_INPUT 256
 
 // Função para imprimir texto UTF-8 no PDCurses
@@ -82,9 +83,10 @@ void menuAdmin() {
         "Criar Turma",
         "Gerenciar Turmas",
         "Gerenciar Matrículas",
+        "Relatórios",
         "Sair"
     };
-    int num_opcoes = 6;
+    int num_opcoes = 7;
     int selecionado = 0;
     int tecla;
     while (1) {
@@ -151,7 +153,10 @@ void menuAdmin() {
                     case 4:
                         menuGerenciarMatriculas();
                         break;
-                    case 5:
+                    case 5: 
+					    menuRelatorios();
+					    break;
+                    case 6:
                         limparTela();
                         linha();
                         mostrarMensagem("Saindo do menu administrador...", 2);
@@ -189,7 +194,120 @@ int pythonCriarTurma() {
    
     return success;
 }
+void menuRelatorios(){
+	const char *opcoes[] = {
+        "Boletim por Turma",
+        "Frequência por Turma",
+        "Relatório Geral do Sistema",
+        "Voltar ao Menu Principal"
+    };
+    int num_opcoes = 4;
+    int selecionado = 0;
+    int tecla;
 
+    while (1) {
+        limparTela();
+        linha();
+        print_banner_adm();  // mesmo banner do menu principal
+        printw("\n");
+        linha();
+        printw_utf8("=== Relatórios Disponíveis ===\n");
+        linha();
+
+        for (int i = 0; i < num_opcoes; i++) {
+            if (i == selecionado) {
+                attron(COLOR_PAIR(1));
+                printw("> ");
+                printw_utf8(opcoes[i]);
+                printw("\n");
+                attroff(COLOR_PAIR(1));
+            } else {
+                printw("  ");
+                printw_utf8(opcoes[i]);
+                printw("\n");
+            }
+        }
+        linha();
+        refresh();
+
+        tecla = getch();
+        switch (tecla) {
+            case KEY_UP:
+                selecionado = (selecionado - 1 + num_opcoes) % num_opcoes;
+                break;
+            case KEY_DOWN:
+                selecionado = (selecionado + 1) % num_opcoes;
+                break;
+            case 10:  // Enter
+            case 13:
+                if (selecionado == 3) {  // Voltar
+                    return;  // sai do submenu e volta pro menuAdmin()
+                }
+
+                // === AQUI RODA O RELATÓRIO (sem quebrar o curses) ===
+                endwin();  // só agora sai do curses
+
+                if (selecionado == 0 || selecionado == 1) {
+                    int turma_id = 0;
+                    char input[20] = {0};
+
+                    printf("\n\n");
+                    printf("   DIGITE O ID DA TURMA: ");
+                    fflush(stdout);
+                    if (scanf("%19s", input) == 1) {
+                        turma_id = atoi(input);
+                    }
+                    while(getchar() != '\n'); // limpa buffer
+
+                    char cmd[600];
+                    if (selecionado == 0) {
+                        snprintf(cmd, sizeof(cmd),
+                            "import relatorios, os\n"
+                            "try:\n"
+                            "    relatorios.boletim_turma(%d)\n"
+                            "except Exception as e:\n"
+                            "    print('Erro ao gerar boletim:', e)\n"
+                            "input('\\n   BOLETIM GERADO!\\n   Aberto automaticamente.\\n   Enter para voltar...')\n", turma_id);
+                    } else {
+                        snprintf(cmd, sizeof(cmd),
+                            "import relatorios, os\n"
+                            "try:\n"
+                            "    relatorios.frequencia_turma(%d)\n"
+                            "except Exception as e:\n"
+                            "    print('Erro ao gerar frequência:', e)\n"
+                            "input('\\n   FREQUÊNCIA GERADA!\\n   Aberto automaticamente.\\n   Enter para voltar...')\n", turma_id);
+                    }
+                    PyRun_SimpleString(cmd);
+
+                } else if (selecionado == 2) {
+                    PyRun_SimpleString(
+                        "import relatorios\n"
+                        "try:\n"
+                        "    relatorios.relatorio_geral()\n"
+                        "except Exception as e:\n"
+                        "    print('Erro ao gerar relatório geral:', e)\n"
+                        "input('\\n   RELATÓRIO GERAL GERADO!\\n   Aberto automaticamente.\\n   Enter para voltar...')\n"
+                    );
+                }
+
+                // VOLTA PRO CURSES EXATAMENTE COMO NO SEU SISTEMA
+                initscr();
+                keypad(stdscr, TRUE);
+                cbreak();
+                noecho();
+                start_color();
+                init_pair(1, COLOR_GREEN, COLOR_BLACK);
+                init_pair(2, COLOR_RED, COLOR_BLACK);
+                init_pair(7, COLOR_CYAN, COLOR_BLACK);
+                clear();
+                refresh();
+                break;
+
+            default:
+                break;
+        }
+    }
+}
 /* Chama a função Python gerenciar_turmas() e retorna sucesso (1) ou cancelamento (0) */
 int pythonGerenciarTurmas() {
     endwin();
